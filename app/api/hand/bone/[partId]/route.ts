@@ -11,10 +11,10 @@ const FRIEND_API_KEY = process.env.FRIEND_API_KEY || process.env.OPENAI_API_KEY;
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { partId: string } }
+  { params }: { params: Promise<{ partId: string }> }
 ) {
   try {
-    const { partId } = params;
+    const { partId } = await params;
 
     if (!partId) {
       return NextResponse.json(
@@ -30,8 +30,8 @@ export async function GET(
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${FRIEND_API_KEY}`,
-          "X-API-Key": FRIEND_API_KEY,
+          "Authorization": `Bearer ${FRIEND_API_KEY || ""}`,
+          "X-API-Key": FRIEND_API_KEY || "",
         },
       });
 

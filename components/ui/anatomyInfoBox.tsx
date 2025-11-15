@@ -37,13 +37,13 @@ export default function AnatomyInfoBox() {
   }, []);
 
   return (
-    <div className="absolute bottom-4 right-4 w-80 p-4 bg-white/90 text-black rounded-lg shadow-md border border-gray-200 backdrop-blur">
+    <div className="absolute top-20 left-4 w-80 max-h-96 overflow-y-auto p-4 bg-white/90 text-black rounded-lg shadow-md border border-gray-200 backdrop-blur">
       <h2 className="font-semibold mb-2 text-lg">Anatomy Details</h2>
       {loading ? (
         <p className="text-gray-500 italic">Loading…</p>
       ) : (
         <p className="text-sm whitespace-pre-line">
-          {text || "Select an anatomical structure to learn more."}
+          {text || "Hover over a bone to learn more."}
         </p>
       )}
     </div>

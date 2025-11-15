@@ -318,7 +318,8 @@ export default function HandModel3D({
       undefined,
       (error) => {
         console.error("Error loading hand model:", error);
-        setError(`Failed to load 3D model: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        setError(`Failed to load 3D model: ${errorMessage}`);
         setLoading(false);
       }
     );

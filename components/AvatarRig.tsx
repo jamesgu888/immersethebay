@@ -345,6 +345,13 @@ function HoverLabel() {
     };
   }, []);
 
+  // Trigger anatomy info box when bone is hovered
+  useEffect(() => {
+    if (hoveredBone && (window as any).showAnatomyInfo) {
+      (window as any).showAnatomyInfo(hoveredBone);
+    }
+  }, [hoveredBone]);
+
   if (!hoveredBone) return null;
 
   return (
