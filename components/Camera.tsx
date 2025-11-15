@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { loadScript } from "@/lib/loadScript";
 
-// Body part groupings for labeling
+// Body part groupings for labeling (Pose landmarks)
 const BODY_PARTS = {
   HEAD: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   LEFT_ARM: [11, 13, 15, 17, 19, 21],
@@ -17,11 +17,19 @@ const BODY_PARTS = {
 // Extend Window interface for MediaPipe globals
 declare global {
   interface Window {
-    Pose?: any;
+    Holistic?: any;
     Camera?: any;
     drawConnectors?: any;
     drawLandmarks?: any;
     POSE_CONNECTIONS?: any;
+    HAND_CONNECTIONS?: any;
+    FACEMESH_TESSELATION?: any;
+    FACEMESH_RIGHT_EYE?: any;
+    FACEMESH_LEFT_EYE?: any;
+    FACEMESH_RIGHT_EYEBROW?: any;
+    FACEMESH_LEFT_EYEBROW?: any;
+    FACEMESH_FACE_OVAL?: any;
+    FACEMESH_LIPS?: any;
   }
 }
 
@@ -47,6 +55,38 @@ export default function Camera() {
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
 
+    const detected: string[] = [];
+
+    // Draw face mesh (468 landmarks)
+    if (results.faceLandmarks) {
+      detected.push("FACE");
+
+      // Draw face tesselation (mesh)
+      window.drawConnectors(canvasCtx, results.faceLandmarks, window.FACEMESH_TESSELATION, {
+        color: "#C0C0C070",
+        lineWidth: 1,
+      });
+
+      // Draw face contours with more emphasis
+      window.drawConnectors(canvasCtx, results.faceLandmarks, window.FACEMESH_RIGHT_EYE, {
+        color: "#FF3030",
+        lineWidth: 2,
+      });
+      window.drawConnectors(canvasCtx, results.faceLandmarks, window.FACEMESH_LEFT_EYE, {
+        color: "#30FF30",
+        lineWidth: 2,
+      });
+      window.drawConnectors(canvasCtx, results.faceLandmarks, window.FACEMESH_FACE_OVAL, {
+        color: "#E0E0E0",
+        lineWidth: 2,
+      });
+      window.drawConnectors(canvasCtx, results.faceLandmarks, window.FACEMESH_LIPS, {
+        color: "#FF6090",
+        lineWidth: 2,
+      });
+    }
+
+    // Draw pose landmarks (33 points - body skeleton)
     if (results.poseLandmarks) {
       // Draw connections (skeleton)
       window.drawConnectors(canvasCtx, results.poseLandmarks, window.POSE_CONNECTIONS, {
@@ -61,12 +101,10 @@ export default function Camera() {
         radius: 6,
       });
 
-      // Draw labels for major body parts
-      const detected: string[] = [];
+      // Label major body parts
       const canvasWidth = canvasRef.current.width;
       const canvasHeight = canvasRef.current.height;
 
-      // Label major body parts
       Object.entries(BODY_PARTS).forEach(([partName, indices]) => {
         const landmarks = indices
           .map((i) => results.poseLandmarks[i])
@@ -92,10 +130,37 @@ export default function Camera() {
           canvasCtx.fillText(text, x, y);
         }
       });
-
-      setDetectedParts(detected);
     }
 
+    // Draw left hand landmarks (21 points)
+    if (results.leftHandLandmarks) {
+      detected.push("LEFT HAND");
+      window.drawConnectors(canvasCtx, results.leftHandLandmarks, window.HAND_CONNECTIONS, {
+        color: "#CC00FF",
+        lineWidth: 3,
+      });
+      window.drawLandmarks(canvasCtx, results.leftHandLandmarks, {
+        color: "#FF00FF",
+        lineWidth: 2,
+        radius: 4,
+      });
+    }
+
+    // Draw right hand landmarks (21 points)
+    if (results.rightHandLandmarks) {
+      detected.push("RIGHT HAND");
+      window.drawConnectors(canvasCtx, results.rightHandLandmarks, window.HAND_CONNECTIONS, {
+        color: "#00CCFF",
+        lineWidth: 3,
+      });
+      window.drawLandmarks(canvasCtx, results.rightHandLandmarks, {
+        color: "#00FFFF",
+        lineWidth: 2,
+        radius: 4,
+      });
+    }
+
+    setDetectedParts(detected);
     canvasCtx.restore();
   };
 
@@ -107,13 +172,13 @@ export default function Camera() {
           loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"),
           loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"),
           loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"),
-          loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"),
+          loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js"),
         ]);
 
         setMediapipeLoaded(true);
       } catch (err) {
         console.error("Error loading MediaPipe scripts:", err);
-        setError("Failed to load pose detection libraries. Please refresh the page.");
+        setError("Failed to load holistic detection libraries. Please refresh the page.");
       }
     };
 
@@ -163,33 +228,34 @@ export default function Camera() {
     setDetectedParts([]);
   };
 
-  // Initialize MediaPipe Pose when camera starts
+  // Initialize MediaPipe Holistic when camera starts
   useEffect(() => {
-    if (isActive && !poseRef.current && mediapipeLoaded && window.Pose) {
+    if (isActive && !poseRef.current && mediapipeLoaded && window.Holistic) {
       setIsLoading(true);
 
       try {
-        const pose = new window.Pose({
+        const holistic = new window.Holistic({
           locateFile: (file: string) => {
-            return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`;
           },
         });
 
-        pose.setOptions({
-          modelComplexity: 1,
+        holistic.setOptions({
+          modelComplexity: 2, // Maximum detail (0=lite, 1=full, 2=heavy)
           smoothLandmarks: true,
           enableSegmentation: false,
           smoothSegmentation: false,
+          refineFaceLandmarks: true, // Enable detailed face mesh
           minDetectionConfidence: 0.5,
           minTrackingConfidence: 0.5,
         });
 
-        pose.onResults(onResults);
-        poseRef.current = pose;
+        holistic.onResults(onResults);
+        poseRef.current = holistic;
         setIsLoading(false);
       } catch (err) {
-        console.error("Error initializing pose:", err);
-        setError("Failed to initialize pose detection. Please refresh the page.");
+        console.error("Error initializing holistic:", err);
+        setError("Failed to initialize holistic detection. Please refresh the page.");
         setIsLoading(false);
       }
     }
@@ -313,13 +379,13 @@ export default function Camera() {
 
           {!mediapipeLoaded && (
             <div className="text-muted-foreground">
-              Loading pose detection libraries...
+              Loading holistic detection libraries...
             </div>
           )}
 
           {isLoading && (
             <div className="text-muted-foreground">
-              Initializing pose detection...
+              Initializing full-body tracking...
             </div>
           )}
 
@@ -329,15 +395,18 @@ export default function Camera() {
             className="px-8"
             disabled={isLoading || !mediapipeLoaded}
           >
-            {isLoading ? "Initializing..." : !mediapipeLoaded ? "Loading..." : "Start Body Detection"}
+            {isLoading ? "Initializing..." : !mediapipeLoaded ? "Loading..." : "Start Full Body Detection"}
           </Button>
 
           <div className="text-center text-sm text-muted-foreground max-w-md space-y-2">
             <p>
-              This app uses MediaPipe Pose to detect 33 body landmarks in real-time.
+              This app uses MediaPipe Holistic to detect <strong>543 landmarks</strong> in real-time.
             </p>
             <p className="text-xs">
-              Detected parts: HEAD, TORSO, LEFT/RIGHT ARM, LEFT/RIGHT LEG
+              33 body points + 42 hand points (21 per hand) + 468 face mesh points
+            </p>
+            <p className="text-xs">
+              Detected: HEAD, TORSO, ARMS, LEGS, HANDS, FACE
             </p>
           </div>
         </div>
