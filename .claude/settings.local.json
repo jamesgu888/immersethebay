@@ -3,7 +3,9 @@
     "allow": [
       "WebFetch(domain:medium.com)",
       "Bash(where:*)",
-      "Bash(node --version)"
+      "Bash(node --version)",
+      "WebSearch",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "ask": []
