@@ -521,7 +521,7 @@ function Metacarpals({ handLandmarks }: { handLandmarks: any }) {
         mcpIndex={HAND_LANDMARKS.THUMB_CMC}
         baseOffset={-2.0}
         radius={0.017}
-        color="#8B4513"
+        color="#FFFFFF"
         name="1st Metacarpal (Thumb) - duplicate bone"
       />
       {/* Index Metacarpal - connects to distal carpal at -0.7 (Trapezoid) */}
@@ -530,7 +530,7 @@ function Metacarpals({ handLandmarks }: { handLandmarks: any }) {
         mcpIndex={HAND_LANDMARKS.INDEX_MCP}
         baseOffset={-0.7}
         radius={0.018}
-        color="#D2691E"
+        color="#FFFFFF"
         name="2nd Metacarpal (Index)"
       />
       {/* Middle Metacarpal - connects between carpals at -0.2 (Capitate area) */}
@@ -539,7 +539,7 @@ function Metacarpals({ handLandmarks }: { handLandmarks: any }) {
         mcpIndex={HAND_LANDMARKS.MIDDLE_MCP}
         baseOffset={-0.2}
         radius={0.018}
-        color="#D2691E"
+        color="#FFFFFF"
         name="3rd Metacarpal (Middle)"
       />
       {/* Ring Metacarpal - connects to distal carpal at 0.7 (Capitate/Hamate) */}
@@ -548,7 +548,7 @@ function Metacarpals({ handLandmarks }: { handLandmarks: any }) {
         mcpIndex={HAND_LANDMARKS.RING_MCP}
         baseOffset={0.7}
         radius={0.018}
-        color="#D2691E"
+        color="#FFFFFF"
         name="4th Metacarpal (Ring)"
       />
       {/* Pinky Metacarpal - connects to distal carpal at 2.0 (Hamate) */}
@@ -557,7 +557,7 @@ function Metacarpals({ handLandmarks }: { handLandmarks: any }) {
         mcpIndex={HAND_LANDMARKS.PINKY_MCP}
         baseOffset={2.0}
         radius={0.017}
-        color="#D2691E"
+        color="#FFFFFF"
         name="5th Metacarpal (Pinky)"
       />
     </group>
@@ -845,7 +845,7 @@ function CarpalConnection({
   return (
     <mesh ref={meshRef}>
       <cylinderGeometry args={[0.008, 0.008, 1, 8]} />
-      <meshStandardMaterial color="#6B5A3D" emissive="#6B5A3D" emissiveIntensity={0.3} />
+      <meshStandardMaterial color="#FFFFFF" emissive="#FFFFFF" emissiveIntensity={0.3} />
     </mesh>
   );
 }
@@ -859,16 +859,16 @@ function CarpalBones({ handLandmarks }: { handLandmarks: any }) {
       {/* These bones articulate with the radius and ulna of the forearm */}
 
       {/* SCAPHOID - Boat-shaped bone on thumb side of wrist */}
-      <CarpalBone handLandmarks={handLandmarks} lateralOffset={-1.2} proximityToWrist={0.15} color="#654321" name="Scaphoid" />
+      <CarpalBone handLandmarks={handLandmarks} lateralOffset={-1.2} proximityToWrist={0.15} color="#FFFFFF" name="Scaphoid" />
 
       {/* LUNATE - Moon-shaped bone, central-radial side */}
-      <CarpalBone handLandmarks={handLandmarks} lateralOffset={-0.5} proximityToWrist={0.15} color="#654321" name="Lunate" />
+      <CarpalBone handLandmarks={handLandmarks} lateralOffset={-0.5} proximityToWrist={0.15} color="#FFFFFF" name="Lunate" />
 
       {/* TRIQUETRUM - Triangular bone, central-ulnar side */}
-      <CarpalBone handLandmarks={handLandmarks} lateralOffset={0.5} proximityToWrist={0.15} color="#654321" name="Triquetrum" />
+      <CarpalBone handLandmarks={handLandmarks} lateralOffset={0.5} proximityToWrist={0.15} color="#FFFFFF" name="Triquetrum" />
 
       {/* PISIFORM - Pea-shaped bone on pinky side of wrist */}
-      <CarpalBone handLandmarks={handLandmarks} lateralOffset={1.2} proximityToWrist={0.15} color="#654321" name="Pisiform" />
+      <CarpalBone handLandmarks={handLandmarks} lateralOffset={1.2} proximityToWrist={0.15} color="#FFFFFF" name="Pisiform" />
 
       {/* Labels for Proximal Row */}
       {/* <CarpalLabel handLandmarks={handLandmarks} lateralOffset={-0.4} proximityToWrist={0.15} text="Scaphoid" offset={[0, -0.03, 0]} />
@@ -880,16 +880,16 @@ function CarpalBones({ handLandmarks }: { handLandmarks: any }) {
       {/* These bones articulate with the metacarpals */}
 
       {/* TRAPEZIUM - Articulates with first metacarpal (thumb) */}
-      <CarpalBone handLandmarks={handLandmarks} lateralOffset={-2.0} proximityToWrist={0.55} color="#8B6F47" name="Trapezium" />
+      <CarpalBone handLandmarks={handLandmarks} lateralOffset={-2.0} proximityToWrist={0.55} color="#FFFFFF" name="Trapezium" />
 
       {/* TRAPEZOID - Articulates with second metacarpal (index finger) */}
-      <CarpalBone handLandmarks={handLandmarks} lateralOffset={-0.7} proximityToWrist={0.55} color="#8B6F47" name="Trapezoid" />
+      <CarpalBone handLandmarks={handLandmarks} lateralOffset={-0.7} proximityToWrist={0.55} color="#FFFFFF" name="Trapezoid" />
 
       {/* CAPITATE - Largest carpal, articulates with third metacarpal (middle finger) and partially with fourth */}
-      <CarpalBone handLandmarks={handLandmarks} lateralOffset={0.7} proximityToWrist={0.55} color="#8B6F47" name="Capitate" />
+      <CarpalBone handLandmarks={handLandmarks} lateralOffset={0.7} proximityToWrist={0.55} color="#FFFFFF" name="Capitate" />
 
       {/* HAMATE - Hook-shaped bone, articulates with fourth and fifth metacarpals (ring and pinky) */}
-      <CarpalBone handLandmarks={handLandmarks} lateralOffset={2.0} proximityToWrist={0.55} color="#8B6F47" name="Hamate" />
+      <CarpalBone handLandmarks={handLandmarks} lateralOffset={2.0} proximityToWrist={0.55} color="#FFFFFF" name="Hamate" />
 
       {/* Labels for Distal Row */}
       {/* <CarpalLabel handLandmarks={handLandmarks} lateralOffset={-2.0} proximityToWrist={0.55} text="Trapezium" offset={[0, 0.03, 0]} />
@@ -1156,7 +1156,7 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
         startIndex={HAND_LANDMARKS.INDEX_DIP}
         endIndex={HAND_LANDMARKS.INDEX_TIP}
         radius={0.010}
-        color="#ADFF2F"
+        color="#FFFFFF"
         name="Index Distal Phalanx"
       />
 
@@ -1185,7 +1185,7 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
         startIndex={HAND_LANDMARKS.MIDDLE_DIP}
         endIndex={HAND_LANDMARKS.MIDDLE_TIP}
         radius={0.010}
-        color="#ADFF2F"
+        color="#FFFFFF"
         name="Middle Distal Phalanx"
       />
 
@@ -1214,7 +1214,7 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
         startIndex={HAND_LANDMARKS.RING_DIP}
         endIndex={HAND_LANDMARKS.RING_TIP}
         radius={0.009}
-        color="#ADFF2F"
+        color="#FFFFFF"
         name="Ring Distal Phalanx"
       />
 
@@ -1243,11 +1243,11 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
         startIndex={HAND_LANDMARKS.PINKY_DIP}
         endIndex={HAND_LANDMARKS.PINKY_TIP}
         radius={0.008}
-        color="#ADFF2F"
+        color="#FFFFFF"
         name="Pinky Distal Phalanx"
       />
 
-      {/* ===== JOINTS (Articulations) ===== */}
+      {/* ===== JOINTS (Articulations) - ALL HIDDEN ===== */}
       {/* MCP Joints (Metacarpophalangeal - knuckles) - HIDDEN */}
       {/* <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.THUMB_CMC} radius={0.014} color="#FF6B35" /> */}
       {/* <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.THUMB_MCP} radius={0.013} color="#FF6B35" />
@@ -1256,25 +1256,25 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
       <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.RING_MCP} radius={0.013} color="#FF6B35" />
       <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.PINKY_MCP} radius={0.012} color="#FF6B35" /> */}
 
-      {/* PIP Joints (Proximal Interphalangeal) */}
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.THUMB_IP} radius={0.011} color="#FF1744" />
+      {/* PIP Joints (Proximal Interphalangeal) - HIDDEN */}
+      {/* <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.THUMB_IP} radius={0.011} color="#FF1744" />
       <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.INDEX_PIP} radius={0.011} color="#FF1744" />
       <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.MIDDLE_PIP} radius={0.011} color="#FF1744" />
       <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.RING_PIP} radius={0.011} color="#FF1744" />
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.PINKY_PIP} radius={0.010} color="#FF1744" />
+      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.PINKY_PIP} radius={0.010} color="#FF1744" /> */}
 
-      {/* DIP Joints (Distal Interphalangeal) */}
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.INDEX_DIP} radius={0.009} color="#E040FB" />
+      {/* DIP Joints (Distal Interphalangeal) - HIDDEN */}
+      {/* <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.INDEX_DIP} radius={0.009} color="#E040FB" />
       <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.MIDDLE_DIP} radius={0.009} color="#E040FB" />
       <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.RING_DIP} radius={0.009} color="#E040FB" />
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.PINKY_DIP} radius={0.008} color="#E040FB" />
+      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.PINKY_DIP} radius={0.008} color="#E040FB" /> */}
 
-      {/* Fingertips */}
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.THUMB_TIP} radius={0.010} color="#00E676" />
+      {/* Fingertips - HIDDEN */}
+      {/* <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.THUMB_TIP} radius={0.010} color="#00E676" />
       <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.INDEX_TIP} radius={0.009} color="#00E676" />
       <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.MIDDLE_TIP} radius={0.009} color="#00E676" />
       <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.RING_TIP} radius={0.009} color="#00E676" />
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.PINKY_TIP} radius={0.008} color="#00E676" />
+      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.PINKY_TIP} radius={0.008} color="#00E676" /> */}
 
       {/* ===== BONE LABELS ===== */}
       {/* TEMPORARILY HIDDEN
