@@ -914,9 +914,9 @@ function CarpalBones({ handLandmarks }: { handLandmarks: any }) {
 }
 
 // Forearm bones (radius and ulna) positioned side by side
-function ForearmBones({ landmarks }: { landmarks: any }) {
+function ForearmBones({ landmarks, isLeft = false }: { landmarks: any; isLeft?: boolean }) {
   const poseLandmarks = landmarks?.poseLandmarks;
-  const handLandmarks = landmarks?.rightHandLandmarks;
+  const handLandmarks = isLeft ? landmarks?.leftHandLandmarks : landmarks?.rightHandLandmarks;
 
   const groupRef = useRef<THREE.Group>(null);
   const radiusShaftRef = useRef<THREE.Mesh>(null);
@@ -954,9 +954,12 @@ function ForearmBones({ landmarks }: { landmarks: any }) {
       );
     };
 
-    const elbow = getPosePos(POSE_LANDMARKS.RIGHT_ELBOW);
+    const elbowIndex = isLeft ? POSE_LANDMARKS.LEFT_ELBOW : POSE_LANDMARKS.RIGHT_ELBOW;
+    const wristIndex = isLeft ? POSE_LANDMARKS.LEFT_WRIST : POSE_LANDMARKS.RIGHT_WRIST;
+
+    const elbow = getPosePos(elbowIndex);
     // Use hand wrist if available, otherwise fall back to pose wrist
-    const wrist = getHandPos(HAND_LANDMARKS.WRIST) || getPosePos(POSE_LANDMARKS.RIGHT_WRIST);
+    const wrist = getHandPos(HAND_LANDMARKS.WRIST) || getPosePos(wristIndex);
 
     if (!elbow || !wrist) {
       if (radiusShaftRef.current) radiusShaftRef.current.visible = false;
@@ -1061,17 +1064,15 @@ function DebugJoint({ poseLandmarks, index, color = "#FF0000" }: { poseLandmarks
   );
 }
 
-// Arm skeleton (humerus, radius, ulna)
+// Arm skeleton (humerus, radius, ulna) - both arms
 function ArmSkeleton({ landmarks }: { landmarks: any }) {
   const poseLandmarks = landmarks?.poseLandmarks;
-  const handLandmarks = landmarks?.rightHandLandmarks;
 
   if (!poseLandmarks) return null;
 
   return (
     <group>
       {/* ===== RIGHT ARM BONES ===== */}
-
       {/* HUMERUS - Upper arm bone (shoulder to elbow) */}
       <PoseBone
         poseLandmarks={poseLandmarks}
@@ -1079,202 +1080,220 @@ function ArmSkeleton({ landmarks }: { landmarks: any }) {
         endIndex={POSE_LANDMARKS.RIGHT_ELBOW}
         radius={0.025}
         color="#FFFFFF"
-        name="Humerus (Upper Arm)"
+        name="Right Humerus (Upper Arm)"
       />
 
-      {/* RADIUS & ULNA - Forearm bones positioned side by side */}
-      <ForearmBones landmarks={landmarks} />
+      {/* RADIUS & ULNA - Right forearm bones */}
+      <ForearmBones landmarks={landmarks} isLeft={false} />
+
+      {/* ===== LEFT ARM BONES ===== */}
+      {/* HUMERUS - Upper arm bone (shoulder to elbow) */}
+      <PoseBone
+        poseLandmarks={poseLandmarks}
+        startIndex={POSE_LANDMARKS.LEFT_SHOULDER}
+        endIndex={POSE_LANDMARKS.LEFT_ELBOW}
+        radius={0.025}
+        color="#FFFFFF"
+        name="Left Humerus (Upper Arm)"
+      />
+
+      {/* RADIUS & ULNA - Left forearm bones */}
+      <ForearmBones landmarks={landmarks} isLeft={true} />
     </group>
   );
 }
 
 // Hand skeleton using anatomically accurate procedural bones
 function HandSkeleton({ landmarks }: { landmarks: any }) {
-  const handLandmarks = landmarks?.rightHandLandmarks;
+  const rightHandLandmarks = landmarks?.rightHandLandmarks;
+  const leftHandLandmarks = landmarks?.leftHandLandmarks;
 
-  if (!handLandmarks) return null;
+  if (!rightHandLandmarks && !leftHandLandmarks) return null;
 
   return (
     <group>
-      {/* ===== CARPAL BONES (8 wrist bones) ===== */}
-      <CarpalBones handLandmarks={handLandmarks} />
+      {/* ===== RIGHT HAND SKELETON ===== */}
+      {rightHandLandmarks && (
+        <group>
+          {/* ===== CARPAL BONES (8 wrist bones) ===== */}
+          <CarpalBones handLandmarks={rightHandLandmarks} />
 
-      {/* ===== METACARPALS (5 palm bones) ===== */}
-      {/* These are rendered by a special component that calculates proper base positions */}
-      <Metacarpals handLandmarks={handLandmarks} />
+          {/* ===== METACARPALS (5 palm bones) ===== */}
+          {/* These are rendered by a special component that calculates proper base positions */}
+          <Metacarpals handLandmarks={rightHandLandmarks} />
 
-      {/* ===== THUMB PHALANGES (2 bones - no middle phalanx) ===== */}
-      {/* Proximal Phalanx of Thumb */}
-      <Bone
-        handLandmarks={handLandmarks}
-        startIndex={HAND_LANDMARKS.THUMB_CMC}
-        endIndex={HAND_LANDMARKS.THUMB_MCP}
-        radius={0.014}
-        color="#FFFFFF"
-        name="1st Metacarpal (Thumb)"
-      />
-      <Bone
-        handLandmarks={handLandmarks}
-        startIndex={HAND_LANDMARKS.THUMB_MCP}
-        endIndex={HAND_LANDMARKS.THUMB_IP}
-        radius={0.013}
-        color="#FFFFFF"
-        name="Thumb Proximal Phalanx"
-      />
-      {/* Distal Phalanx of Thumb */}
-      <Bone
-        handLandmarks={handLandmarks}
-        startIndex={HAND_LANDMARKS.THUMB_IP}
-        endIndex={HAND_LANDMARKS.THUMB_TIP}
-        radius={0.012}
-        color="#FFFFFF"
-        name="Thumb Distal Phalanx"
-      />
+          {/* ===== THUMB PHALANGES (2 bones - no middle phalanx) ===== */}
+          {/* Proximal Phalanx of Thumb */}
+          <Bone
+            handLandmarks={rightHandLandmarks}
+            startIndex={HAND_LANDMARKS.THUMB_CMC}
+            endIndex={HAND_LANDMARKS.THUMB_MCP}
+            radius={0.014}
+            color="#FFFFFF"
+            name="1st Metacarpal (Thumb)"
+          />
+          <Bone
+            handLandmarks={rightHandLandmarks}
+            startIndex={HAND_LANDMARKS.THUMB_MCP}
+            endIndex={HAND_LANDMARKS.THUMB_IP}
+            radius={0.013}
+            color="#FFFFFF"
+            name="Thumb Proximal Phalanx"
+          />
+          {/* Distal Phalanx of Thumb */}
+          <Bone
+            handLandmarks={rightHandLandmarks}
+            startIndex={HAND_LANDMARKS.THUMB_IP}
+            endIndex={HAND_LANDMARKS.THUMB_TIP}
+            radius={0.012}
+            color="#FFFFFF"
+            name="Thumb Distal Phalanx"
+          />
 
-      {/* ===== INDEX FINGER PHALANGES (3 bones) ===== */}
-      {/* Proximal Phalanx */}
-      <Bone
-        handLandmarks={handLandmarks}
-        startIndex={HAND_LANDMARKS.INDEX_MCP}
-        endIndex={HAND_LANDMARKS.INDEX_PIP}
-        radius={0.013}
-        color="#FFFFFF"
-        name="Index Proximal Phalanx"
-      />
-      {/* Middle Phalanx */}
-      <Bone
-        handLandmarks={handLandmarks}
-        startIndex={HAND_LANDMARKS.INDEX_PIP}
-        endIndex={HAND_LANDMARKS.INDEX_DIP}
-        radius={0.011}
-        color="#FFFFFF"
-        name="Index Middle Phalanx"
-      />
-      {/* Distal Phalanx */}
-      <Bone
-        handLandmarks={handLandmarks}
-        startIndex={HAND_LANDMARKS.INDEX_DIP}
-        endIndex={HAND_LANDMARKS.INDEX_TIP}
-        radius={0.010}
-        color="#FFFFFF"
-        name="Index Distal Phalanx"
-      />
+          {/* ===== INDEX FINGER PHALANGES (3 bones) ===== */}
+          {/* Proximal Phalanx */}
+          <Bone
+            handLandmarks={rightHandLandmarks}
+            startIndex={HAND_LANDMARKS.INDEX_MCP}
+            endIndex={HAND_LANDMARKS.INDEX_PIP}
+            radius={0.013}
+            color="#FFFFFF"
+            name="Index Proximal Phalanx"
+          />
+          {/* Middle Phalanx */}
+          <Bone
+            handLandmarks={rightHandLandmarks}
+            startIndex={HAND_LANDMARKS.INDEX_PIP}
+            endIndex={HAND_LANDMARKS.INDEX_DIP}
+            radius={0.011}
+            color="#FFFFFF"
+            name="Index Middle Phalanx"
+          />
+          {/* Distal Phalanx */}
+          <Bone
+            handLandmarks={rightHandLandmarks}
+            startIndex={HAND_LANDMARKS.INDEX_DIP}
+            endIndex={HAND_LANDMARKS.INDEX_TIP}
+            radius={0.010}
+            color="#FFFFFF"
+            name="Index Distal Phalanx"
+          />
 
-      {/* ===== MIDDLE FINGER PHALANGES (3 bones) ===== */}
-      {/* Proximal Phalanx */}
-      <Bone
-        handLandmarks={handLandmarks}
-        startIndex={HAND_LANDMARKS.MIDDLE_MCP}
-        endIndex={HAND_LANDMARKS.MIDDLE_PIP}
-        radius={0.013}
-        color="#FFFFFF"
-        name="Middle Proximal Phalanx"
-      />
-      {/* Middle Phalanx */}
-      <Bone
-        handLandmarks={handLandmarks}
-        startIndex={HAND_LANDMARKS.MIDDLE_PIP}
-        endIndex={HAND_LANDMARKS.MIDDLE_DIP}
-        radius={0.011}
-        color="#FFFFFF"
-        name="Middle Middle Phalanx"
-      />
-      {/* Distal Phalanx */}
-      <Bone
-        handLandmarks={handLandmarks}
-        startIndex={HAND_LANDMARKS.MIDDLE_DIP}
-        endIndex={HAND_LANDMARKS.MIDDLE_TIP}
-        radius={0.010}
-        color="#FFFFFF"
-        name="Middle Distal Phalanx"
-      />
+          {/* ===== MIDDLE FINGER PHALANGES (3 bones) ===== */}
+          {/* Proximal Phalanx */}
+          <Bone
+            handLandmarks={rightHandLandmarks}
+            startIndex={HAND_LANDMARKS.MIDDLE_MCP}
+            endIndex={HAND_LANDMARKS.MIDDLE_PIP}
+            radius={0.013}
+            color="#FFFFFF"
+            name="Middle Proximal Phalanx"
+          />
+          {/* Middle Phalanx */}
+          <Bone
+            handLandmarks={rightHandLandmarks}
+            startIndex={HAND_LANDMARKS.MIDDLE_PIP}
+            endIndex={HAND_LANDMARKS.MIDDLE_DIP}
+            radius={0.011}
+            color="#FFFFFF"
+            name="Middle Middle Phalanx"
+          />
+          {/* Distal Phalanx */}
+          <Bone
+            handLandmarks={rightHandLandmarks}
+            startIndex={HAND_LANDMARKS.MIDDLE_DIP}
+            endIndex={HAND_LANDMARKS.MIDDLE_TIP}
+            radius={0.010}
+            color="#FFFFFF"
+            name="Middle Distal Phalanx"
+          />
 
-      {/* ===== RING FINGER PHALANGES (3 bones) ===== */}
-      {/* Proximal Phalanx */}
-      <Bone
-        handLandmarks={handLandmarks}
-        startIndex={HAND_LANDMARKS.RING_MCP}
-        endIndex={HAND_LANDMARKS.RING_PIP}
-        radius={0.012}
-        color="#FFFFFF"
-        name="Ring Proximal Phalanx"
-      />
-      {/* Middle Phalanx */}
-      <Bone
-        handLandmarks={handLandmarks}
-        startIndex={HAND_LANDMARKS.RING_PIP}
-        endIndex={HAND_LANDMARKS.RING_DIP}
-        radius={0.010}
-        color="#FFFFFF"
-        name="Ring Middle Phalanx"
-      />
-      {/* Distal Phalanx */}
-      <Bone
-        handLandmarks={handLandmarks}
-        startIndex={HAND_LANDMARKS.RING_DIP}
-        endIndex={HAND_LANDMARKS.RING_TIP}
-        radius={0.009}
-        color="#FFFFFF"
-        name="Ring Distal Phalanx"
-      />
+          {/* ===== RING FINGER PHALANGES (3 bones) ===== */}
+          {/* Proximal Phalanx */}
+          <Bone
+            handLandmarks={rightHandLandmarks}
+            startIndex={HAND_LANDMARKS.RING_MCP}
+            endIndex={HAND_LANDMARKS.RING_PIP}
+            radius={0.012}
+            color="#FFFFFF"
+            name="Ring Proximal Phalanx"
+          />
+          {/* Middle Phalanx */}
+          <Bone
+            handLandmarks={rightHandLandmarks}
+            startIndex={HAND_LANDMARKS.RING_PIP}
+            endIndex={HAND_LANDMARKS.RING_DIP}
+            radius={0.010}
+            color="#FFFFFF"
+            name="Ring Middle Phalanx"
+          />
+          {/* Distal Phalanx */}
+          <Bone
+            handLandmarks={rightHandLandmarks}
+            startIndex={HAND_LANDMARKS.RING_DIP}
+            endIndex={HAND_LANDMARKS.RING_TIP}
+            radius={0.009}
+            color="#FFFFFF"
+            name="Ring Distal Phalanx"
+          />
 
-      {/* ===== PINKY FINGER PHALANGES (3 bones) ===== */}
-      {/* Proximal Phalanx */}
-      <Bone
-        handLandmarks={handLandmarks}
-        startIndex={HAND_LANDMARKS.PINKY_MCP}
-        endIndex={HAND_LANDMARKS.PINKY_PIP}
-        radius={0.011}
-        color="#FFFFFF"
-        name="Pinky Proximal Phalanx"
-      />
-      {/* Middle Phalanx */}
-      <Bone
-        handLandmarks={handLandmarks}
-        startIndex={HAND_LANDMARKS.PINKY_PIP}
-        endIndex={HAND_LANDMARKS.PINKY_DIP}
-        radius={0.009}
-        color="#FFFFFF"
-        name="Pinky Middle Phalanx"
-      />
-      {/* Distal Phalanx */}
-      <Bone
-        handLandmarks={handLandmarks}
-        startIndex={HAND_LANDMARKS.PINKY_DIP}
-        endIndex={HAND_LANDMARKS.PINKY_TIP}
-        radius={0.008}
-        color="#FFFFFF"
-        name="Pinky Distal Phalanx"
-      />
+          {/* ===== PINKY FINGER PHALANGES (3 bones) ===== */}
+          {/* Proximal Phalanx */}
+          <Bone
+            handLandmarks={rightHandLandmarks}
+            startIndex={HAND_LANDMARKS.PINKY_MCP}
+            endIndex={HAND_LANDMARKS.PINKY_PIP}
+            radius={0.011}
+            color="#FFFFFF"
+            name="Pinky Proximal Phalanx"
+          />
+          {/* Middle Phalanx */}
+          <Bone
+            handLandmarks={rightHandLandmarks}
+            startIndex={HAND_LANDMARKS.PINKY_PIP}
+            endIndex={HAND_LANDMARKS.PINKY_DIP}
+            radius={0.009}
+            color="#FFFFFF"
+            name="Pinky Middle Phalanx"
+          />
+          {/* Distal Phalanx */}
+          <Bone
+            handLandmarks={rightHandLandmarks}
+            startIndex={HAND_LANDMARKS.PINKY_DIP}
+            endIndex={HAND_LANDMARKS.PINKY_TIP}
+            radius={0.008}
+            color="#FFFFFF"
+            name="Pinky Distal Phalanx"
+          />
 
-      {/* ===== JOINTS (Articulations) - ALL HIDDEN ===== */}
-      {/* MCP Joints (Metacarpophalangeal - knuckles) - HIDDEN */}
-      {/* <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.THUMB_CMC} radius={0.014} color="#FF6B35" /> */}
-      {/* <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.THUMB_MCP} radius={0.013} color="#FF6B35" />
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.INDEX_MCP} radius={0.013} color="#FF6B35" />
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.MIDDLE_MCP} radius={0.013} color="#FF6B35" />
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.RING_MCP} radius={0.013} color="#FF6B35" />
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.PINKY_MCP} radius={0.012} color="#FF6B35" /> */}
+          {/* ===== JOINTS (Articulations) - ALL HIDDEN ===== */}
+          {/* MCP Joints (Metacarpophalangeal - knuckles) - HIDDEN */}
+          {/* <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.THUMB_CMC} radius={0.014} color="#FF6B35" /> */}
+          {/* <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.THUMB_MCP} radius={0.013} color="#FF6B35" />
+          <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.INDEX_MCP} radius={0.013} color="#FF6B35" />
+          <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.MIDDLE_MCP} radius={0.013} color="#FF6B35" />
+          <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.RING_MCP} radius={0.013} color="#FF6B35" />
+          <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.PINKY_MCP} radius={0.012} color="#FF6B35" /> */}
 
-      {/* PIP Joints (Proximal Interphalangeal) - HIDDEN */}
-      {/* <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.THUMB_IP} radius={0.011} color="#FF1744" />
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.INDEX_PIP} radius={0.011} color="#FF1744" />
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.MIDDLE_PIP} radius={0.011} color="#FF1744" />
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.RING_PIP} radius={0.011} color="#FF1744" />
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.PINKY_PIP} radius={0.010} color="#FF1744" /> */}
+          {/* PIP Joints (Proximal Interphalangeal) - HIDDEN */}
+          {/* <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.THUMB_IP} radius={0.011} color="#FF1744" />
+          <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.INDEX_PIP} radius={0.011} color="#FF1744" />
+          <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.MIDDLE_PIP} radius={0.011} color="#FF1744" />
+          <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.RING_PIP} radius={0.011} color="#FF1744" />
+          <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.PINKY_PIP} radius={0.010} color="#FF1744" /> */}
 
-      {/* DIP Joints (Distal Interphalangeal) - HIDDEN */}
-      {/* <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.INDEX_DIP} radius={0.009} color="#E040FB" />
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.MIDDLE_DIP} radius={0.009} color="#E040FB" />
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.RING_DIP} radius={0.009} color="#E040FB" />
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.PINKY_DIP} radius={0.008} color="#E040FB" /> */}
+          {/* DIP Joints (Distal Interphalangeal) - HIDDEN */}
+          {/* <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.INDEX_DIP} radius={0.009} color="#E040FB" />
+          <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.MIDDLE_DIP} radius={0.009} color="#E040FB" />
+          <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.RING_DIP} radius={0.009} color="#E040FB" />
+          <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.PINKY_DIP} radius={0.008} color="#E040FB" /> */}
 
-      {/* Fingertips - HIDDEN */}
-      {/* <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.THUMB_TIP} radius={0.010} color="#00E676" />
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.INDEX_TIP} radius={0.009} color="#00E676" />
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.MIDDLE_TIP} radius={0.009} color="#00E676" />
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.RING_TIP} radius={0.009} color="#00E676" />
-      <Joint handLandmarks={handLandmarks} index={HAND_LANDMARKS.PINKY_TIP} radius={0.008} color="#00E676" /> */}
+          {/* Fingertips - HIDDEN */}
+          {/* <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.THUMB_TIP} radius={0.010} color="#00E676" />
+          <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.INDEX_TIP} radius={0.009} color="#00E676" />
+          <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.MIDDLE_TIP} radius={0.009} color="#00E676" />
+          <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.RING_TIP} radius={0.009} color="#00E676" />
+          <Joint handLandmarks={rightHandLandmarks} index={HAND_LANDMARKS.PINKY_TIP} radius={0.008} color="#00E676" /> */}
 
       {/* ===== BONE LABELS ===== */}
       {/* TEMPORARILY HIDDEN
@@ -1310,6 +1329,186 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
       <BoneLabel handLandmarks={handLandmarks} index={HAND_LANDMARKS.PINKY_TIP} text="Pinky Distal Phalanx" offset={[0.07, 0, 0]} /> */}
 
       {/* Wrist - removed, bases of metacarpals now spread properly */}
+        </group>
+      )}
+
+      {/* ===== LEFT HAND SKELETON ===== */}
+      {leftHandLandmarks && (
+        <group>
+          {/* ===== CARPAL BONES (8 wrist bones) ===== */}
+          <CarpalBones handLandmarks={leftHandLandmarks} />
+
+          {/* ===== METACARPALS (5 palm bones) ===== */}
+          <Metacarpals handLandmarks={leftHandLandmarks} />
+
+          {/* ===== THUMB PHALANGES (2 bones - no middle phalanx) ===== */}
+          {/* Proximal Phalanx of Thumb */}
+          <Bone
+            handLandmarks={leftHandLandmarks}
+            startIndex={HAND_LANDMARKS.THUMB_CMC}
+            endIndex={HAND_LANDMARKS.THUMB_MCP}
+            radius={0.014}
+            color="#FFFFFF"
+            name="1st Metacarpal (Thumb)"
+          />
+          <Bone
+            handLandmarks={leftHandLandmarks}
+            startIndex={HAND_LANDMARKS.THUMB_MCP}
+            endIndex={HAND_LANDMARKS.THUMB_IP}
+            radius={0.013}
+            color="#FFFFFF"
+            name="Thumb Proximal Phalanx"
+          />
+          {/* Distal Phalanx of Thumb */}
+          <Bone
+            handLandmarks={leftHandLandmarks}
+            startIndex={HAND_LANDMARKS.THUMB_IP}
+            endIndex={HAND_LANDMARKS.THUMB_TIP}
+            radius={0.012}
+            color="#FFFFFF"
+            name="Thumb Distal Phalanx"
+          />
+
+          {/* ===== INDEX FINGER PHALANGES (3 bones) ===== */}
+          {/* Proximal Phalanx */}
+          <Bone
+            handLandmarks={leftHandLandmarks}
+            startIndex={HAND_LANDMARKS.INDEX_MCP}
+            endIndex={HAND_LANDMARKS.INDEX_PIP}
+            radius={0.013}
+            color="#FFFFFF"
+            name="Index Proximal Phalanx"
+          />
+          {/* Middle Phalanx */}
+          <Bone
+            handLandmarks={leftHandLandmarks}
+            startIndex={HAND_LANDMARKS.INDEX_PIP}
+            endIndex={HAND_LANDMARKS.INDEX_DIP}
+            radius={0.011}
+            color="#FFFFFF"
+            name="Index Middle Phalanx"
+          />
+          {/* Distal Phalanx */}
+          <Bone
+            handLandmarks={leftHandLandmarks}
+            startIndex={HAND_LANDMARKS.INDEX_DIP}
+            endIndex={HAND_LANDMARKS.INDEX_TIP}
+            radius={0.010}
+            color="#FFFFFF"
+            name="Index Distal Phalanx"
+          />
+
+          {/* ===== MIDDLE FINGER PHALANGES (3 bones) ===== */}
+          {/* Proximal Phalanx */}
+          <Bone
+            handLandmarks={leftHandLandmarks}
+            startIndex={HAND_LANDMARKS.MIDDLE_MCP}
+            endIndex={HAND_LANDMARKS.MIDDLE_PIP}
+            radius={0.013}
+            color="#FFFFFF"
+            name="Middle Proximal Phalanx"
+          />
+          {/* Middle Phalanx */}
+          <Bone
+            handLandmarks={leftHandLandmarks}
+            startIndex={HAND_LANDMARKS.MIDDLE_PIP}
+            endIndex={HAND_LANDMARKS.MIDDLE_DIP}
+            radius={0.011}
+            color="#FFFFFF"
+            name="Middle Middle Phalanx"
+          />
+          {/* Distal Phalanx */}
+          <Bone
+            handLandmarks={leftHandLandmarks}
+            startIndex={HAND_LANDMARKS.MIDDLE_DIP}
+            endIndex={HAND_LANDMARKS.MIDDLE_TIP}
+            radius={0.010}
+            color="#FFFFFF"
+            name="Middle Distal Phalanx"
+          />
+
+          {/* ===== RING FINGER PHALANGES (3 bones) ===== */}
+          {/* Proximal Phalanx */}
+          <Bone
+            handLandmarks={leftHandLandmarks}
+            startIndex={HAND_LANDMARKS.RING_MCP}
+            endIndex={HAND_LANDMARKS.RING_PIP}
+            radius={0.012}
+            color="#FFFFFF"
+            name="Ring Proximal Phalanx"
+          />
+          {/* Middle Phalanx */}
+          <Bone
+            handLandmarks={leftHandLandmarks}
+            startIndex={HAND_LANDMARKS.RING_PIP}
+            endIndex={HAND_LANDMARKS.RING_DIP}
+            radius={0.010}
+            color="#FFFFFF"
+            name="Ring Middle Phalanx"
+          />
+          {/* Distal Phalanx */}
+          <Bone
+            handLandmarks={leftHandLandmarks}
+            startIndex={HAND_LANDMARKS.RING_DIP}
+            endIndex={HAND_LANDMARKS.RING_TIP}
+            radius={0.009}
+            color="#FFFFFF"
+            name="Ring Distal Phalanx"
+          />
+
+          {/* ===== PINKY FINGER PHALANGES (3 bones) ===== */}
+          {/* Proximal Phalanx */}
+          <Bone
+            handLandmarks={leftHandLandmarks}
+            startIndex={HAND_LANDMARKS.PINKY_MCP}
+            endIndex={HAND_LANDMARKS.PINKY_PIP}
+            radius={0.011}
+            color="#FFFFFF"
+            name="Pinky Proximal Phalanx"
+          />
+          {/* Middle Phalanx */}
+          <Bone
+            handLandmarks={leftHandLandmarks}
+            startIndex={HAND_LANDMARKS.PINKY_PIP}
+            endIndex={HAND_LANDMARKS.PINKY_DIP}
+            radius={0.009}
+            color="#FFFFFF"
+            name="Pinky Middle Phalanx"
+          />
+          {/* Distal Phalanx */}
+          <Bone
+            handLandmarks={leftHandLandmarks}
+            startIndex={HAND_LANDMARKS.PINKY_DIP}
+            endIndex={HAND_LANDMARKS.PINKY_TIP}
+            radius={0.008}
+            color="#FFFFFF"
+            name="Pinky Distal Phalanx"
+          />
+
+          {/* ===== JOINTS (Articulations) - ALL HIDDEN ===== */}
+          {/* PIP Joints (Proximal Interphalangeal) - HIDDEN */}
+          {/* <Joint handLandmarks={leftHandLandmarks} index={HAND_LANDMARKS.THUMB_IP} radius={0.011} color="#FF1744" />
+          <Joint handLandmarks={leftHandLandmarks} index={HAND_LANDMARKS.INDEX_PIP} radius={0.011} color="#FF1744" />
+          <Joint handLandmarks={leftHandLandmarks} index={HAND_LANDMARKS.MIDDLE_PIP} radius={0.011} color="#FF1744" />
+          <Joint handLandmarks={leftHandLandmarks} index={HAND_LANDMARKS.RING_PIP} radius={0.011} color="#FF1744" />
+          <Joint handLandmarks={leftHandLandmarks} index={HAND_LANDMARKS.PINKY_PIP} radius={0.010} color="#FF1744" /> */}
+
+          {/* DIP Joints (Distal Interphalangeal) - HIDDEN */}
+          {/* <Joint handLandmarks={leftHandLandmarks} index={HAND_LANDMARKS.INDEX_DIP} radius={0.009} color="#E040FB" />
+          <Joint handLandmarks={leftHandLandmarks} index={HAND_LANDMARKS.MIDDLE_DIP} radius={0.009} color="#E040FB" />
+          <Joint handLandmarks={leftHandLandmarks} index={HAND_LANDMARKS.RING_DIP} radius={0.009} color="#E040FB" />
+          <Joint handLandmarks={leftHandLandmarks} index={HAND_LANDMARKS.PINKY_DIP} radius={0.008} color="#E040FB" /> */}
+
+          {/* Fingertips - HIDDEN */}
+          {/* <Joint handLandmarks={leftHandLandmarks} index={HAND_LANDMARKS.THUMB_TIP} radius={0.010} color="#00E676" />
+          <Joint handLandmarks={leftHandLandmarks} index={HAND_LANDMARKS.INDEX_TIP} radius={0.009} color="#00E676" />
+          <Joint handLandmarks={leftHandLandmarks} index={HAND_LANDMARKS.MIDDLE_TIP} radius={0.009} color="#00E676" />
+          <Joint handLandmarks={leftHandLandmarks} index={HAND_LANDMARKS.RING_TIP} radius={0.009} color="#00E676" />
+          <Joint handLandmarks={leftHandLandmarks} index={HAND_LANDMARKS.PINKY_TIP} radius={0.008} color="#00E676" /> */}
+
+          {/* Wrist - removed, bases of metacarpals now spread properly */}
+        </group>
+      )}
     </group>
   );
 }
