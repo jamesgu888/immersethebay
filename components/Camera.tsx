@@ -49,6 +49,7 @@ export default function Camera() {
   const cameraRef = useRef<any>(null);
   const [mediapipeLoaded, setMediapipeLoaded] = useState(false);
   const [currentLandmarks, setCurrentLandmarks] = useState<any>(null);
+  const [showMediaPipe, setShowMediaPipe] = useState(true);
 
   const onResults = (results: any) => {
     if (!canvasRef.current || !window.drawConnectors || !window.drawLandmarks) return;
@@ -62,114 +63,133 @@ export default function Camera() {
 
     const detected: string[] = [];
 
-    // Draw face mesh (468 landmarks)
-    if (results.faceLandmarks) {
-      detected.push("FACE");
+    // Only draw if MediaPipe visualization is enabled
+    if (showMediaPipe) {
+      // Draw face mesh (468 landmarks)
+      if (results.faceLandmarks) {
+        detected.push("FACE");
 
-      // Draw face tesselation (mesh)
-      window.drawConnectors(canvasCtx, results.faceLandmarks, window.FACEMESH_TESSELATION, {
-        color: "#C0C0C070",
-        lineWidth: 1,
-      });
+        // Draw face tesselation (mesh)
+        window.drawConnectors(canvasCtx, results.faceLandmarks, window.FACEMESH_TESSELATION, {
+          color: "#C0C0C070",
+          lineWidth: 1,
+        });
 
-      // Draw face contours with more emphasis
-      window.drawConnectors(canvasCtx, results.faceLandmarks, window.FACEMESH_RIGHT_EYE, {
-        color: "#FF3030",
-        lineWidth: 2,
-      });
-      window.drawConnectors(canvasCtx, results.faceLandmarks, window.FACEMESH_LEFT_EYE, {
-        color: "#30FF30",
-        lineWidth: 2,
-      });
-      window.drawConnectors(canvasCtx, results.faceLandmarks, window.FACEMESH_FACE_OVAL, {
-        color: "#E0E0E0",
-        lineWidth: 2,
-      });
-      window.drawConnectors(canvasCtx, results.faceLandmarks, window.FACEMESH_LIPS, {
-        color: "#FF6090",
-        lineWidth: 2,
-      });
+        // Draw face contours with more emphasis
+        window.drawConnectors(canvasCtx, results.faceLandmarks, window.FACEMESH_RIGHT_EYE, {
+          color: "#FF3030",
+          lineWidth: 2,
+        });
+        window.drawConnectors(canvasCtx, results.faceLandmarks, window.FACEMESH_LEFT_EYE, {
+          color: "#30FF30",
+          lineWidth: 2,
+        });
+        window.drawConnectors(canvasCtx, results.faceLandmarks, window.FACEMESH_FACE_OVAL, {
+          color: "#E0E0E0",
+          lineWidth: 2,
+        });
+        window.drawConnectors(canvasCtx, results.faceLandmarks, window.FACEMESH_LIPS, {
+          color: "#FF6090",
+          lineWidth: 2,
+        });
+      }
+
+      // Draw pose landmarks (33 points - body skeleton)
+      if (results.poseLandmarks) {
+        // Draw connections (skeleton)
+        window.drawConnectors(canvasCtx, results.poseLandmarks, window.POSE_CONNECTIONS, {
+          color: "#00FF00",
+          lineWidth: 4,
+        });
+
+        // Draw landmarks (joints)
+        window.drawLandmarks(canvasCtx, results.poseLandmarks, {
+          color: "#FF0000",
+          lineWidth: 2,
+          radius: 6,
+        });
+
+        // Label major body parts
+        const canvasWidth = canvasRef.current.width;
+        const canvasHeight = canvasRef.current.height;
+
+        Object.entries(BODY_PARTS).forEach(([partName, indices]) => {
+          const landmarks = indices
+            .map((i) => results.poseLandmarks[i])
+            .filter((l: any) => l && l.visibility && l.visibility > 0.5);
+
+          if (landmarks.length > 0) {
+            detected.push(partName);
+
+            // Calculate average position for label
+            const avgX = landmarks.reduce((sum: number, l: any) => sum + l.x, 0) / landmarks.length;
+            const avgY = landmarks.reduce((sum: number, l: any) => sum + l.y, 0) / landmarks.length;
+
+            // Draw label
+            canvasCtx.font = "bold 16px Arial";
+            canvasCtx.fillStyle = "#FFFF00";
+            canvasCtx.strokeStyle = "#000000";
+            canvasCtx.lineWidth = 3;
+            const text = partName.replace("_", " ");
+            const x = avgX * canvasWidth;
+            const y = avgY * canvasHeight;
+
+            canvasCtx.strokeText(text, x, y);
+            canvasCtx.fillText(text, x, y);
+          }
+        });
+      }
+
+      // Draw left hand landmarks (21 points)
+      if (results.leftHandLandmarks) {
+        detected.push("LEFT HAND");
+        window.drawConnectors(canvasCtx, results.leftHandLandmarks, window.HAND_CONNECTIONS, {
+          color: "#CC00FF",
+          lineWidth: 3,
+        });
+        window.drawLandmarks(canvasCtx, results.leftHandLandmarks, {
+          color: "#FF00FF",
+          lineWidth: 2,
+          radius: 4,
+        });
+      }
+
+      // Draw right hand landmarks (21 points)
+      if (results.rightHandLandmarks) {
+        detected.push("RIGHT HAND");
+        window.drawConnectors(canvasCtx, results.rightHandLandmarks, window.HAND_CONNECTIONS, {
+          color: "#00CCFF",
+          lineWidth: 3,
+        });
+        window.drawLandmarks(canvasCtx, results.rightHandLandmarks, {
+          color: "#00FFFF",
+          lineWidth: 2,
+          radius: 4,
+        });
+      }
+
+      setDetectedParts(detected);
+    } else {
+      // Still track detected parts even when hidden
+      if (results.faceLandmarks) detected.push("FACE");
+      if (results.poseLandmarks) {
+        Object.entries(BODY_PARTS).forEach(([partName, indices]) => {
+          const landmarks = indices
+            .map((i) => results.poseLandmarks[i])
+            .filter((l: any) => l && l.visibility && l.visibility > 0.5);
+          if (landmarks.length > 0) detected.push(partName);
+        });
+      }
+      if (results.leftHandLandmarks) detected.push("LEFT HAND");
+      if (results.rightHandLandmarks) detected.push("RIGHT HAND");
+      setDetectedParts(detected);
     }
 
-    // Draw pose landmarks (33 points - body skeleton)
-    if (results.poseLandmarks) {
-      // Draw connections (skeleton)
-      window.drawConnectors(canvasCtx, results.poseLandmarks, window.POSE_CONNECTIONS, {
-        color: "#00FF00",
-        lineWidth: 4,
-      });
-
-      // Draw landmarks (joints)
-      window.drawLandmarks(canvasCtx, results.poseLandmarks, {
-        color: "#FF0000",
-        lineWidth: 2,
-        radius: 6,
-      });
-
-      // Label major body parts
-      const canvasWidth = canvasRef.current.width;
-      const canvasHeight = canvasRef.current.height;
-
-      Object.entries(BODY_PARTS).forEach(([partName, indices]) => {
-        const landmarks = indices
-          .map((i) => results.poseLandmarks[i])
-          .filter((l: any) => l && l.visibility && l.visibility > 0.5);
-
-        if (landmarks.length > 0) {
-          detected.push(partName);
-
-          // Calculate average position for label
-          const avgX = landmarks.reduce((sum: number, l: any) => sum + l.x, 0) / landmarks.length;
-          const avgY = landmarks.reduce((sum: number, l: any) => sum + l.y, 0) / landmarks.length;
-
-          // Draw label
-          canvasCtx.font = "bold 16px Arial";
-          canvasCtx.fillStyle = "#FFFF00";
-          canvasCtx.strokeStyle = "#000000";
-          canvasCtx.lineWidth = 3;
-          const text = partName.replace("_", " ");
-          const x = avgX * canvasWidth;
-          const y = avgY * canvasHeight;
-
-          canvasCtx.strokeText(text, x, y);
-          canvasCtx.fillText(text, x, y);
-        }
-      });
-    }
-
-    // Draw left hand landmarks (21 points)
-    if (results.leftHandLandmarks) {
-      detected.push("LEFT HAND");
-      window.drawConnectors(canvasCtx, results.leftHandLandmarks, window.HAND_CONNECTIONS, {
-        color: "#CC00FF",
-        lineWidth: 3,
-      });
-      window.drawLandmarks(canvasCtx, results.leftHandLandmarks, {
-        color: "#FF00FF",
-        lineWidth: 2,
-        radius: 4,
-      });
-    }
-
-    // Draw right hand landmarks (21 points)
-    if (results.rightHandLandmarks) {
-      detected.push("RIGHT HAND");
-      window.drawConnectors(canvasCtx, results.rightHandLandmarks, window.HAND_CONNECTIONS, {
-        color: "#00CCFF",
-        lineWidth: 3,
-      });
-      window.drawLandmarks(canvasCtx, results.rightHandLandmarks, {
-        color: "#00FFFF",
-        lineWidth: 2,
-        radius: 4,
-      });
-    }
-
-    setDetectedParts(detected);
     // Trigger GPT for the first detected part
     if (detected.length > 0) {
       (window as any).showAnatomyInfo(detected[0]);
     }
+
     setCurrentLandmarks(results);
     canvasCtx.restore();
   };
@@ -337,7 +357,10 @@ export default function Camera() {
                 }
               }}
               className="absolute top-0 left-0 w-full h-full"
-              style={{ transform: "scaleX(-1)" }}
+              style={{
+                transform: "scaleX(-1)",
+                display: showMediaPipe ? "block" : "none"
+              }}
             />
 
             <AnatomyInfoBox />
@@ -370,14 +393,24 @@ export default function Camera() {
                 </div>
               )}
 
-              <Button
-                onClick={stopCamera}
-                variant="destructive"
-                size="lg"
-                className="w-full max-w-md mx-auto"
-              >
-                Stop Camera
-              </Button>
+              <div className="flex gap-4 max-w-md mx-auto w-full">
+                <Button
+                  onClick={() => setShowMediaPipe(!showMediaPipe)}
+                  variant={showMediaPipe ? "default" : "outline"}
+                  size="lg"
+                  className="flex-1"
+                >
+                  {showMediaPipe ? "Hide" : "Show"} MediaPipe
+                </Button>
+                <Button
+                  onClick={stopCamera}
+                  variant="destructive"
+                  size="lg"
+                  className="flex-1"
+                >
+                  Stop Camera
+                </Button>
+              </div>
             </div>
           </div>
         </div>
