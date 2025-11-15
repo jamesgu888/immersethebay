@@ -8,14 +8,18 @@ import AnatomyInfoBox from "@/components/ui/anatomyInfoBox";
 
 const AvatarRig = dynamic(() => import("@/components/AvatarRig"), { ssr: false });
 
-// Body part groupings for labeling (Pose landmarks)
+// Bone groupings for labeling (Pose landmarks)
 const BODY_PARTS = {
-  HEAD: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-  LEFT_ARM: [11, 13, 15, 17, 19, 21],
-  RIGHT_ARM: [12, 14, 16, 18, 20, 22],
-  TORSO: [11, 12, 23, 24],
-  LEFT_LEG: [23, 25, 27, 29, 31],
-  RIGHT_LEG: [24, 26, 28, 30, 32],
+  SKULL: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+  "LEFT HUMERUS": [11, 13],  // Left shoulder to elbow
+  "LEFT RADIUS": [13, 15],   // Left elbow to wrist
+  "RIGHT HUMERUS": [12, 14], // Right shoulder to elbow
+  "RIGHT RADIUS": [14, 16],  // Right elbow to wrist
+  "SPINE": [11, 12, 23, 24], // Torso/spine
+  "LEFT FEMUR": [23, 25],    // Left hip to knee
+  "LEFT TIBIA": [25, 27],    // Left knee to ankle
+  "RIGHT FEMUR": [24, 26],   // Right hip to knee
+  "RIGHT TIBIA": [26, 28],   // Right knee to ankle
 };
 
 // Extend Window interface for MediaPipe globals
@@ -50,6 +54,7 @@ export default function Camera() {
   const [mediapipeLoaded, setMediapipeLoaded] = useState(false);
   const [currentLandmarks, setCurrentLandmarks] = useState<any>(null);
   const [showMediaPipe, setShowMediaPipe] = useState(true);
+  const lastDetectedPartRef = useRef<string | null>(null);
 
   const onResults = (results: any) => {
     if (!canvasRef.current || !window.drawConnectors || !window.drawLandmarks) return;
@@ -67,7 +72,7 @@ export default function Camera() {
     if (showMediaPipe) {
       // Draw face mesh (468 landmarks)
       if (results.faceLandmarks) {
-        detected.push("FACE");
+        // Don't add FACE to detected parts - we only track body parts/bones
 
         // Draw face tesselation (mesh)
         window.drawConnectors(canvasCtx, results.faceLandmarks, window.FACEMESH_TESSELATION, {
@@ -170,8 +175,7 @@ export default function Camera() {
 
       setDetectedParts(detected);
     } else {
-      // Still track detected parts even when hidden
-      if (results.faceLandmarks) detected.push("FACE");
+      // Still track detected parts even when hidden (only body parts, not face)
       if (results.poseLandmarks) {
         Object.entries(BODY_PARTS).forEach(([partName, indices]) => {
           const landmarks = indices
@@ -185,10 +189,8 @@ export default function Camera() {
       setDetectedParts(detected);
     }
 
-    // Trigger GPT for the first detected part
-    if (detected.length > 0) {
-      (window as any).showAnatomyInfo(detected[0]);
-    }
+    // Don't trigger anatomy info from MediaPipe detection
+    // Anatomy info is only shown when hovering over bones in the 3D avatar
 
     setCurrentLandmarks(results);
     canvasCtx.restore();
