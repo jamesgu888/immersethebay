@@ -376,6 +376,83 @@ function HoverLabel() {
   );
 }
 
+function SkullBone({
+  poseLandmarks,
+  startIndex,
+  endIndex,
+  radius = 0.02,
+  color = "#FFFFFF",
+  name
+}: {
+  poseLandmarks: any;
+  startIndex: number;
+  endIndex: number;
+  radius?: number;
+  color?: string;
+  name?: string;
+}) {
+  const groupRef = useRef<THREE.Group>(null);
+  const shaftRef = useRef<THREE.Mesh>(null);
+  const { setHoveredBone } = useContext(HoverContext);
+
+  useFrame(() => {
+    if (!groupRef.current || !shaftRef.current || !poseLandmarks) return;
+
+    const getPos = (index: number): THREE.Vector3 | null => {
+      const lm = poseLandmarks[index];
+      if (!lm || lm.visibility < 0.5) return null;
+
+      const aspect = window.innerWidth / window.innerHeight;
+      const fov = 75;
+      const vFOV = (fov * Math.PI) / 180;
+      const camDistance = 2;
+      const height = 2 * Math.tan(vFOV / 2) * camDistance;
+      const width = height * aspect;
+
+      return new THREE.Vector3(
+        (lm.x - 0.5) * width * -1,
+        (lm.y - 0.5) * height * -1,
+        0
+      );
+    };
+
+    const start = getPos(startIndex);
+    const end = getPos(endIndex);
+    if (!start || !end) {
+      groupRef.current.visible = false;
+      return;
+    }
+
+    groupRef.current.visible = true;
+
+    const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+    const direction = new THREE.Vector3().subVectors(end, start);
+    const length = start.distanceTo(end);
+
+    groupRef.current.position.copy(mid);
+    groupRef.current.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      direction.clone().normalize()
+    );
+
+    shaftRef.current.scale.set(1, length, 1);
+  });
+
+  return (
+    <group
+      ref={groupRef}
+      onPointerEnter={() => name && setHoveredBone(name)}
+      onPointerLeave={() => name && setHoveredBone(null)}
+      onClick={() => name && (window as any).showAnatomyInfo?.(name)}
+    >
+      <mesh ref={shaftRef}>
+        <cylinderGeometry args={[radius, radius, 1, 12]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
 // Label for a bone at a specific position
 function BoneLabel({
   handLandmarks,
@@ -1520,6 +1597,65 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
   );
 }
 
+function SkullSkeleton({ landmarks }: { landmarks: any }) {
+  const poseLandmarks = landmarks?.poseLandmarks;
+  if (!poseLandmarks) return null;
+
+  return (
+    <group>
+      {/* Zygomatic Bones (Cheekbones) */}
+      <SkullBone
+        poseLandmarks={poseLandmarks}
+        startIndex={POSE_LANDMARKS.LEFT_EYE_OUTER}
+        endIndex={POSE_LANDMARKS.MOUTH_LEFT}
+        radius={0.02}
+        color="#FFFFFF"
+        name="Left Zygomatic Bone"
+      />
+
+      <SkullBone
+        poseLandmarks={poseLandmarks}
+        startIndex={POSE_LANDMARKS.RIGHT_EYE_OUTER}
+        endIndex={POSE_LANDMARKS.MOUTH_RIGHT}
+        radius={0.02}
+        color="#FFFFFF"
+        name="Right Zygomatic Bone"
+      />
+
+      {/* Nasal Bone */}
+      <SkullBone
+        poseLandmarks={poseLandmarks}
+        startIndex={POSE_LANDMARKS.NOSE}
+        endIndex={POSE_LANDMARKS.LEFT_EYE_INNER}
+        radius={0.015}
+        color="#FFFFFF"
+        name="Nasal Bone"
+      />
+
+      {/* Frontal Bone (Eyebrow region) */}
+      <SkullBone
+        poseLandmarks={poseLandmarks}
+        startIndex={POSE_LANDMARKS.LEFT_EYE}
+        endIndex={POSE_LANDMARKS.RIGHT_EYE}
+        radius={0.025}
+        color="#FFFFFF"
+        name="Frontal Bone"
+      />
+
+      {/* Mandible (approx - jaw corners) */}
+      <SkullBone
+        poseLandmarks={poseLandmarks}
+        startIndex={POSE_LANDMARKS.MOUTH_LEFT}
+        endIndex={POSE_LANDMARKS.MOUTH_RIGHT}
+        radius={0.03}
+        color="#FFFFFF"
+        name="Mandible"
+      />
+    </group>
+  );
+}
+
+
 // Main canvas wrapper component
 export default function AvatarRig({ landmarks }: AvatarRigProps) {
   const [hoveredBone, setHoveredBone] = useState<string | null>(null);
@@ -1542,6 +1678,7 @@ export default function AvatarRig({ landmarks }: AvatarRigProps) {
 
           <ArmSkeleton landmarks={landmarks} />
           <HandSkeleton landmarks={landmarks} />
+          <SkullSkeleton landmarks={landmarks} /> 
         </Canvas>
         <HoverLabel />
       </div>
