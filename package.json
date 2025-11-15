@@ -12,15 +12,20 @@
     "@mediapipe/camera_utils": "^0.3.1675466862",
     "@mediapipe/drawing_utils": "^0.3.1675466124",
     "@mediapipe/pose": "^0.5.1675469404",
+    "@pixiv/three-vrm": "^3.4.4",
     "@radix-ui/react-slot": "^1.2.4",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.4.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "kalidokit": "^1.1.5",
     "lucide-react": "^0.553.0",
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.4.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "three": "^0.181.1"
   },
   "devDependencies": {
     "@types/node": "^20",
