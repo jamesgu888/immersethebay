@@ -143,12 +143,29 @@ export function useHandClickDetection(config: ClickDetectionConfig) {
         let partId: string | null = null;
         let currentObject: THREE.Object3D | null = clickedObject;
 
+        // Check userData on clicked object first to determine hand side
+        let isLeftHand = false;
+        let clickedObjectToCheck: THREE.Object3D | null = clickedObject;
+        while (clickedObjectToCheck && !isLeftHand) {
+          if (clickedObjectToCheck.userData?.handSide === "left") {
+            isLeftHand = true;
+            break;
+          }
+          clickedObjectToCheck = clickedObjectToCheck.parent;
+        }
+
         while (currentObject && !partId) {
           const objectName = currentObject.name;
           if (objectName) {
             // Use custom mapping function or default
             const mapper = config.mapObjectToPartId || defaultMapObjectToPartId;
-            partId = mapper(objectName);
+            // Pass object name with hand side info encoded if available
+            const nameToPass = isLeftHand ? `left_${objectName}` : `right_${objectName}`;
+            // Try with hand prefix first, then without
+            partId = mapper(nameToPass);
+            if (!partId) {
+              partId = mapper(objectName);
+            }
             if (partId) break;
           }
           currentObject = currentObject.parent;

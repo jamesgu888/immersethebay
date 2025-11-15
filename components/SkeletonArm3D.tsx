@@ -61,6 +61,8 @@ export default function SkeletonArm3D({
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const loadedModelsRef = useRef<THREE.Group[]>([]);
+  const rightHandGroupRef = useRef<THREE.Group | null>(null);
+  const leftHandGroupRef = useRef<THREE.Group | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPart, setSelectedPart] = useState<string | null>(null);
@@ -68,7 +70,8 @@ export default function SkeletonArm3D({
   const animationFrameRef = useRef<number | null>(null);
 
   // Map GLB file names and object names to part identifiers
-  const mapObjectToPartId = (objectName: string, fileName?: string): string | null => {
+  // Also determines if it's left or right hand based on parent group position
+  const mapObjectToPartId = (objectName: string, fileName?: string, isLeftHand?: boolean): string | null => {
     if (!objectName && !fileName) return null;
     
     const lowerName = (objectName || fileName || "").toLowerCase();
@@ -79,68 +82,118 @@ export default function SkeletonArm3D({
       ? lowerName 
       : lowerFile;
 
+    // Determine hand side prefix
+    const handPrefix = isLeftHand ? "left_" : "right_";
+
     // Arm bones
-    if (searchName.includes("humerus")) return "humerus";
-    if (searchName.includes("radius")) return "radius";
-    if (searchName.includes("ulna")) return "ulna";
+    if (searchName.includes("humerus")) return `${handPrefix}humerus`;
+    if (searchName.includes("radius")) return `${handPrefix}radius`;
+    if (searchName.includes("ulna")) return `${handPrefix}ulna`;
 
     // Carpals
-    if (searchName.includes("scaphoid")) return "scaphoid";
-    if (searchName.includes("lunate")) return "lunate";
-    if (searchName.includes("pisiform") || searchName.includes("triquetrum")) return "pisiform_triquetrum";
-    if (searchName.includes("hamate")) return "hamate";
-    if (searchName.includes("capitate")) return "capitate";
-    if (searchName.includes("trapezoid")) return "trapezoid";
-    if (searchName.includes("trapezium")) return "trapezium";
+    if (searchName.includes("scaphoid")) return `${handPrefix}scaphoid`;
+    if (searchName.includes("lunate")) return `${handPrefix}lunate`;
+    if (searchName.includes("pisiform") || searchName.includes("triquetrum")) return `${handPrefix}pisiform_triquetrum`;
+    if (searchName.includes("hamate")) return `${handPrefix}hamate`;
+    if (searchName.includes("capitate")) return `${handPrefix}capitate`;
+    if (searchName.includes("trapezoid")) return `${handPrefix}trapezoid`;
+    if (searchName.includes("trapezium")) return `${handPrefix}trapezium`;
     
     // Carpals numbered
-    if (searchName.includes("carpal1")) return "carpal1";
-    if (searchName.includes("carpal2")) return "carpal2";
-    if (searchName.includes("carpal3")) return "carpal3";
-    if (searchName.includes("carpal4")) return "carpal4";
+    if (searchName.includes("carpal1")) return `${handPrefix}carpal1`;
+    if (searchName.includes("carpal2")) return `${handPrefix}carpal2`;
+    if (searchName.includes("carpal3")) return `${handPrefix}carpal3`;
+    if (searchName.includes("carpal4")) return `${handPrefix}carpal4`;
 
     // Fingers - proximal segments
-    if (searchName.includes("thumb_phong") || (searchName.includes("thumb") && searchName.includes("phong"))) return "thumb_proximal";
-    if (searchName.includes("pointer_phong") || (searchName.includes("pointer") && searchName.includes("phong"))) return "pointer_proximal";
-    if (searchName.includes("middle_phong") || (searchName.includes("middle") && searchName.includes("phong"))) return "middle_proximal";
-    if (searchName.includes("ring_phong") || (searchName.includes("ring") && searchName.includes("phong"))) return "ring_proximal";
-    if (searchName.includes("pinky_phong") || (searchName.includes("pinky") && searchName.includes("phong"))) return "pinky_proximal";
+    if (searchName.includes("thumb_phong") || (searchName.includes("thumb") && searchName.includes("phong"))) return `${handPrefix}thumb_proximal`;
+    if (searchName.includes("pointer_phong") || (searchName.includes("pointer") && searchName.includes("phong"))) return `${handPrefix}pointer_proximal`;
+    if (searchName.includes("middle_phong") || (searchName.includes("middle") && searchName.includes("phong"))) return `${handPrefix}middle_proximal`;
+    if (searchName.includes("ring_phong") || (searchName.includes("ring") && searchName.includes("phong"))) return `${handPrefix}ring_proximal`;
+    if (searchName.includes("pinky_phong") || (searchName.includes("pinky") && searchName.includes("phong"))) return `${handPrefix}pinky_proximal`;
 
     // Finger segments - Finger 2 (Pointer)
-    if (searchName.includes("fingerseg2_1")) return "pointer_segment_1";
-    if (searchName.includes("fingerseg2_2")) return "pointer_segment_2";
-    if (searchName.includes("fingerseg2_3")) return "pointer_segment_3";
-    if (searchName.includes("fingerseg2_4")) return "pointer_segment_4";
-    if (searchName.includes("fingerseg2_5")) return "pointer_segment_5";
+    if (searchName.includes("fingerseg2_1")) return `${handPrefix}pointer_segment_1`;
+    if (searchName.includes("fingerseg2_2")) return `${handPrefix}pointer_segment_2`;
+    if (searchName.includes("fingerseg2_3")) return `${handPrefix}pointer_segment_3`;
+    if (searchName.includes("fingerseg2_4")) return `${handPrefix}pointer_segment_4`;
+    if (searchName.includes("fingerseg2_5")) return `${handPrefix}pointer_segment_5`;
 
     // Finger segments - Finger 3 (Middle)
-    if (searchName.includes("fingerseg3_1")) return "middle_segment_1";
-    if (searchName.includes("fingerseg3_2")) return "middle_segment_2";
-    if (searchName.includes("fingerseg3_3")) return "middle_segment_3";
-    if (searchName.includes("fingerseg3_4")) return "middle_segment_4";
-    if (searchName.includes("fingerseg3_5")) return "middle_segment_5";
+    if (searchName.includes("fingerseg3_1")) return `${handPrefix}middle_segment_1`;
+    if (searchName.includes("fingerseg3_2")) return `${handPrefix}middle_segment_2`;
+    if (searchName.includes("fingerseg3_3")) return `${handPrefix}middle_segment_3`;
+    if (searchName.includes("fingerseg3_4")) return `${handPrefix}middle_segment_4`;
+    if (searchName.includes("fingerseg3_5")) return `${handPrefix}middle_segment_5`;
 
     return null;
   };
 
-  // Setup click detection
+  // Setup click detection with custom handler that has access to clicked object
   const { setupClickDetection } = useHandClickDetection({
     apiEndpoint,
     mapObjectToPartId: (objectName) => {
-      // Try to find the source file for better mapping
-      const sourceFile = loadedModelsRef.current.find((group) => {
-        let found = false;
-        group.traverse((child) => {
-          if (child.name === objectName) {
-            found = true;
+      // Check if objectName has hand prefix (from the hook's enhancement)
+      let isLeftHand = false;
+      let cleanObjectName = objectName;
+      
+      if (objectName.startsWith("left_")) {
+        isLeftHand = true;
+        cleanObjectName = objectName.substring(5); // Remove "left_" prefix
+      } else if (objectName.startsWith("right_")) {
+        cleanObjectName = objectName.substring(6); // Remove "right_" prefix
+      }
+      
+      // Search both groups to find the object and get its filename
+      let fileName: string | undefined;
+      
+      if (isLeftHand && leftHandGroupRef.current) {
+        leftHandGroupRef.current.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            const childName = child.name || "";
+            if (childName === cleanObjectName || childName.includes(cleanObjectName)) {
+              fileName = child.userData.sourceFile;
+            }
           }
         });
-        return found;
-      });
+      } else if (!isLeftHand && rightHandGroupRef.current) {
+        rightHandGroupRef.current.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            const childName = child.name || "";
+            if (childName === cleanObjectName || childName.includes(cleanObjectName)) {
+              fileName = child.userData.sourceFile;
+            }
+          }
+        });
+      }
       
-      // Extract filename from group name or use object name
-      const fileName = sourceFile?.name || objectName;
-      return mapObjectToPartId(objectName, fileName);
+      // Fallback: search both if not determined
+      if (!fileName) {
+        if (leftHandGroupRef.current) {
+          leftHandGroupRef.current.traverse((child) => {
+            if (child instanceof THREE.Mesh && (child.name === cleanObjectName || child.name.includes(cleanObjectName))) {
+              if (!fileName) {
+                isLeftHand = true;
+                fileName = child.userData.sourceFile;
+              }
+            }
+          });
+        }
+        
+        if (!fileName && rightHandGroupRef.current) {
+          rightHandGroupRef.current.traverse((child) => {
+            if (child instanceof THREE.Mesh && (child.name === cleanObjectName || child.name.includes(cleanObjectName))) {
+              if (!fileName) {
+                fileName = child.userData.sourceFile;
+              }
+            }
+          });
+        }
+      }
+      
+      // Use filename if object name is generic
+      const searchName = fileName || cleanObjectName;
+      return mapObjectToPartId(cleanObjectName, searchName, isLeftHand);
     },
     onPartClick: (partId, data) => {
       setSelectedPart(partId);
@@ -195,31 +248,61 @@ export default function SkeletonArm3D({
     pointLight.position.set(-5, 0, 5);
     scene.add(pointLight);
 
-    // Load all GLB files
+    // Create parent groups for left and right hands
+    const rightHandGroup = new THREE.Group();
+    rightHandGroup.name = "right_hand";
+    rightHandGroup.position.set(3, 0, 0); // Position right hand on the right side
+    scene.add(rightHandGroup);
+    rightHandGroupRef.current = rightHandGroup;
+
+    const leftHandGroup = new THREE.Group();
+    leftHandGroup.name = "left_hand";
+    leftHandGroup.position.set(-3, 0, 0); // Position left hand on the left side
+    leftHandGroup.scale.x = -1; // Mirror the left hand
+    scene.add(leftHandGroup);
+    leftHandGroupRef.current = leftHandGroup;
+
+    // Load all GLB files and create duplicates for both hands
     const loader = new GLTFLoader();
     const loadPromises = GLB_FILES.map((filename) => {
       return loader
         .loadAsync(`/models/skeleton_arm/${filename}`)
         .then((gltf) => {
-          const model = gltf.scene;
-          // Store filename in the group for reference
-          model.name = filename;
+          // Right hand model
+          const rightModel = gltf.scene.clone();
+          rightModel.name = filename;
           
-          // Enable shadows
-          model.traverse((child) => {
+          // Enable shadows and store metadata for right hand
+          rightModel.traverse((child) => {
             if (child instanceof THREE.Mesh) {
               child.castShadow = true;
               child.receiveShadow = true;
-              // Store filename in each mesh for click detection
-              if (!child.userData.sourceFile) {
-                child.userData.sourceFile = filename;
-              }
+              child.userData.sourceFile = filename;
+              child.userData.handSide = "right";
             }
           });
 
-          scene.add(model);
-          loadedModelsRef.current.push(model);
-          return model;
+          rightHandGroup.add(rightModel);
+          loadedModelsRef.current.push(rightModel);
+
+          // Left hand model (clone and mirror)
+          const leftModel = gltf.scene.clone();
+          leftModel.name = filename;
+          
+          // Enable shadows and store metadata for left hand
+          leftModel.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+              child.userData.sourceFile = filename;
+              child.userData.handSide = "left";
+            }
+          });
+
+          leftHandGroup.add(leftModel);
+          loadedModelsRef.current.push(leftModel);
+
+          return { right: rightModel, left: leftModel };
         })
         .catch((err) => {
           console.warn(`Failed to load ${filename}:`, err);
@@ -229,7 +312,7 @@ export default function SkeletonArm3D({
 
     Promise.all(loadPromises).then((models) => {
       const loadedCount = models.filter((m) => m !== null).length;
-      console.log(`Loaded ${loadedCount}/${GLB_FILES.length} models`);
+      console.log(`Loaded ${loadedCount}/${GLB_FILES.length} models (${loadedCount * 2} total - left and right hands)`);
       
       if (loadedCount === 0) {
         setError("Failed to load any models. Check that GLB files are in /public/models/skeleton_arm/");
@@ -237,11 +320,10 @@ export default function SkeletonArm3D({
         return;
       }
 
-      // Center camera on all loaded models
+      // Center camera on both hand groups
       const box = new THREE.Box3();
-      loadedModelsRef.current.forEach((model) => {
-        box.expandByObject(model);
-      });
+      if (rightHandGroup) box.expandByObject(rightHandGroup);
+      if (leftHandGroup) box.expandByObject(leftHandGroup);
       
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
