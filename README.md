@@ -8,7 +8,10 @@ A Next.js web app with real-time body part detection for anatomical visualizatio
 - **TypeScript** - Type safety
 - **Tailwind CSS** - Styling
 - **Shadcn/ui** - Beautiful UI components
-- **MediaPipe Pose** - Real-time body tracking and pose detection
+- **MediaPipe Holistic** - Real-time body tracking (543 landmarks)
+- **Three.js** - 3D graphics rendering
+- **React Three Fiber** - React renderer for Three.js
+- **@react-three/drei** - Useful helpers for R3F
 
 ## Getting Started
 
@@ -48,6 +51,24 @@ A Next.js web app with real-time body part detection for anatomical visualizatio
   - Silver face mesh with highlighted eyes and lips
 - **Maximum Model Complexity** - Set to level 2 for highest accuracy
 - **Detection Feedback** - Live list of successfully detected body parts
+
+### 3D Anatomy Overlay 🦴
+- **Real-time 3D Skeleton** - Full skeletal system rendered in 3D using Three.js
+- **Support for Real 3D Models** - Load realistic skeleton models from Sketchfab or other sources
+  - Place `skeleton.glb` in the `public` folder
+  - See `public/SKELETON_MODEL_SETUP.md` for detailed instructions
+  - Automatic fallback to procedural skeleton if no model provided
+- **Anatomical Accuracy** - Tracks major body parts:
+  - Upper body (shoulders, arms, torso)
+  - Lower body (hips, legs)
+  - Automatic scaling to match your body size
+- **Layer Toggle System** - Switch between different anatomical views:
+  - None - Just MediaPipe landmarks
+  - Skeleton - 3D bone overlay
+  - Muscles - Coming soon
+  - Organs - Coming soon
+- **Motion Tracking** - 3D skeleton follows your movements in real-time
+- **Perspective Rendering** - Realistic depth and positioning
 
 ### UI/UX
 - Clean, modern interface with Shadcn/ui components
@@ -102,30 +123,63 @@ The app uses Google's MediaPipe Holistic model for ultra-detailed full-body trac
 - **Right hand** - Cyan connections and landmarks
 - **Face mesh** - Silver tesselation with highlighted features (eyes, lips, oval)
 
-## Next Steps for Anatomy Augmentation
+## How to Use
 
-This foundation is ready for adding anatomical overlays! Here are suggested enhancements:
+1. **Start the app** - Click "Start Full Body Detection"
+2. **Grant camera permissions** when prompted
+3. **Toggle anatomy layers** using the buttons in the top-right:
+   - **None** - Just MediaPipe tracking (green skeleton, red joints, colored hands, face mesh)
+   - **Skeleton** - 3D bone overlay showing internal skeletal structure
+   - **Muscles** - Coming soon!
+   - **Organs** - Coming soon!
+4. **Move around** - Watch the 3D skeleton follow your movements in real-time!
 
-### 1. Add Anatomical Layer Toggle
-- [ ] Skeletal system overlay
-- [ ] Muscular system overlay
-- [ ] Circulatory system overlay
-- [ ] Nervous system overlay
+## Optional: Add a Real 3D Skeleton Model
 
-### 2. 3D Model Integration
-- Consider using Three.js or React Three Fiber
-- Map detected pose to 3D anatomical models
-- Allow rotation and zoom of anatomy layers
+For maximum realism, you can load a professional 3D skeleton model:
 
-### 3. Educational Features
-- Click on body parts to show information
-- Quiz mode for learning anatomy
-- Highlight specific muscles/bones during movements
+### Quick Steps:
+1. Download a free skeleton model from [Sketchfab](https://sketchfab.com/search?q=skeleton&type=models&features=downloadable) (look for GLB/GLTF format)
+2. Rename it to `skeleton.glb`
+3. Place it in the `public` folder
+4. Refresh the app - your realistic skeleton will appear!
 
-### 4. Motion Tracking
-- Track joint angles for exercise form
-- Measure range of motion
-- Analyze movement patterns
+**See `public/SKELETON_MODEL_SETUP.md` for detailed instructions and recommended models.**
+
+**Note**: Without a model, the app automatically uses a fallback skeleton made of simple shapes - it still looks great!
+
+## Next Steps for Enhancement
+
+### ✅ Completed
+- [x] Skeletal system overlay with 3D bones
+- [x] Ribcage rendering
+- [x] Pelvis rendering
+- [x] Major limb bones (arms and legs)
+- [x] Layer toggle system
+
+### 🚀 Future Enhancements
+
+#### 1. Muscular System Overlay
+- [ ] Major muscle groups (biceps, triceps, quadriceps, etc.)
+- [ ] Muscle highlighting during movement
+- [ ] Muscle contraction visualization
+
+#### 2. Circulatory System Overlay
+- [ ] Heart and major blood vessels
+- [ ] Animated blood flow
+- [ ] Pulse visualization
+
+#### 3. Educational Features
+- [ ] Click on bones/muscles to show information
+- [ ] Labels for anatomical parts
+- [ ] Quiz mode for learning anatomy
+- [ ] AR mode for mobile devices
+
+#### 4. Advanced Motion Analysis
+- [ ] Track joint angles for exercise form
+- [ ] Measure range of motion
+- [ ] Posture analysis and feedback
+- [ ] Exercise repetition counter
 
 ## Building for Production
 
