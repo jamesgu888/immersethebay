@@ -1,11 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx create-next-app@latest . --typescript --tailwind --app --no-src-dir --import-alias \"@/*\" --eslint)",
-      "Bash(npx create-next-app@latest temp-next-app --typescript --tailwind --app --no-src-dir --import-alias \"@/*\" --eslint)",
-      "Bash(npm install)",
-      "Bash(npx shadcn@latest init -d)",
-      "Bash(npm install:*)"
+      "WebFetch(domain:medium.com)",
+      "Bash(where:*)",
+      "Bash(node --version)"
     ],
     "deny": [],
     "ask": []

@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { loadScript } from "@/lib/loadScript";
+import AnatomyInfoBox from "@/components/ui/anatomyInfoBox";
+
+const AvatarRig = dynamic(() => import("@/components/AvatarRig"), { ssr: false });
 
 // Body part groupings for labeling (Pose landmarks)
 const BODY_PARTS = {
@@ -44,6 +48,7 @@ export default function Camera() {
   const poseRef = useRef<any>(null);
   const cameraRef = useRef<any>(null);
   const [mediapipeLoaded, setMediapipeLoaded] = useState(false);
+  const [currentLandmarks, setCurrentLandmarks] = useState<any>(null);
 
   const onResults = (results: any) => {
     if (!canvasRef.current || !window.drawConnectors || !window.drawLandmarks) return;
@@ -161,6 +166,11 @@ export default function Camera() {
     }
 
     setDetectedParts(detected);
+    // Trigger GPT for the first detected part
+    if (detected.length > 0) {
+      (window as any).showAnatomyInfo(detected[0]);
+    }
+    setCurrentLandmarks(results);
     canvasCtx.restore();
   };
 
@@ -321,9 +331,19 @@ export default function Camera() {
             />
             <canvas
               ref={canvasRef}
+              onClick={(e) => {
+                if (detectedParts.length > 0) {
+                  (window as any).showAnatomyInfo(detectedParts[0]);
+                }
+              }}
               className="absolute top-0 left-0 w-full h-full"
               style={{ transform: "scaleX(-1)" }}
             />
+
+            <AnatomyInfoBox />
+
+            {/* 3D Avatar Rig Overlay */}
+            {currentLandmarks && <AvatarRig landmarks={currentLandmarks} />}
           </div>
 
           {/* Top overlay with title */}
