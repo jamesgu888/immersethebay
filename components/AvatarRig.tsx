@@ -44,6 +44,144 @@ const HAND_LANDMARKS = {
   PINKY_TIP: 20,
 };
 
+// MediaPipe Pose landmark indices (33 points for body)
+const POSE_LANDMARKS = {
+  NOSE: 0,
+  LEFT_EYE_INNER: 1,
+  LEFT_EYE: 2,
+  LEFT_EYE_OUTER: 3,
+  RIGHT_EYE_INNER: 4,
+  RIGHT_EYE: 5,
+  RIGHT_EYE_OUTER: 6,
+  LEFT_EAR: 7,
+  RIGHT_EAR: 8,
+  MOUTH_LEFT: 9,
+  MOUTH_RIGHT: 10,
+  LEFT_SHOULDER: 11,
+  RIGHT_SHOULDER: 12,
+  LEFT_ELBOW: 13,
+  RIGHT_ELBOW: 14,
+  LEFT_WRIST: 15,
+  RIGHT_WRIST: 16,
+  LEFT_PINKY: 17,
+  RIGHT_PINKY: 18,
+  LEFT_INDEX: 19,
+  RIGHT_INDEX: 20,
+  LEFT_THUMB: 21,
+  RIGHT_THUMB: 22,
+  LEFT_HIP: 23,
+  RIGHT_HIP: 24,
+  LEFT_KNEE: 25,
+  RIGHT_KNEE: 26,
+  LEFT_ANKLE: 27,
+  RIGHT_ANKLE: 28,
+  LEFT_HEEL: 29,
+  RIGHT_HEEL: 30,
+  LEFT_FOOT_INDEX: 31,
+  RIGHT_FOOT_INDEX: 32,
+};
+
+// Bone that uses pose landmarks instead of hand landmarks
+function PoseBone({
+  poseLandmarks,
+  startIndex,
+  endIndex,
+  radius = 0.02,
+  color = "#FFFFFF",
+  name,
+}: {
+  poseLandmarks: any;
+  startIndex: number;
+  endIndex: number;
+  radius?: number;
+  color?: string;
+  name?: string;
+}) {
+  const groupRef = useRef<THREE.Group>(null);
+  const shaftRef = useRef<THREE.Mesh>(null);
+  const headStartRef = useRef<THREE.Mesh>(null);
+  const headEndRef = useRef<THREE.Mesh>(null);
+  const { setHoveredBone } = useContext(HoverContext);
+
+  useFrame(() => {
+    if (!groupRef.current || !shaftRef.current || !headStartRef.current || !headEndRef.current || !poseLandmarks) return;
+
+    const getPos = (index: number): THREE.Vector3 | null => {
+      const lm = poseLandmarks[index];
+      if (!lm || (lm.visibility !== undefined && lm.visibility < 0.5)) return null;
+
+      // Direct mapping from MediaPipe normalized coordinates to Three.js NDC
+      // Then convert to world space using inverse of projection
+      const aspect = window.innerWidth / window.innerHeight;
+      const fov = 75;
+      const vFOV = (fov * Math.PI) / 180;
+      const camDistance = 2;
+      const height = 2 * Math.tan(vFOV / 2) * camDistance;
+      const width = height * aspect;
+
+      return new THREE.Vector3(
+        (lm.x - 0.5) * width * -1,
+        (lm.y - 0.5) * height * -1,
+        0  // Keep all bones at same depth for perfect alignment with 2D overlay
+      );
+    };
+
+    const start = getPos(startIndex);
+    const end = getPos(endIndex);
+
+    if (!start || !end) {
+      groupRef.current.visible = false;
+      return;
+    }
+
+    groupRef.current.visible = true;
+
+    // Calculate bone properties
+    const boneLength = start.distanceTo(end);
+    const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+    const direction = new THREE.Vector3().subVectors(end, start);
+    const axis = new THREE.Vector3(0, 1, 0);
+
+    // Position and rotate the bone group
+    groupRef.current.position.copy(midpoint);
+    groupRef.current.quaternion.setFromUnitVectors(axis, direction.clone().normalize());
+
+    // Bone shaft - full length to match landmarks exactly
+    shaftRef.current.scale.set(1, boneLength, 1);
+
+    // Bone heads (wider ends) - positioned at both ends (hidden but needed for refs)
+    const headSize = radius * 1.8;
+    headStartRef.current.position.set(0, -boneLength / 2, 0);
+    headStartRef.current.scale.set(headSize, headSize, headSize);
+
+    headEndRef.current.position.set(0, boneLength / 2, 0);
+    headEndRef.current.scale.set(headSize, headSize, headSize);
+  });
+
+  return (
+    <group
+      ref={groupRef}
+      onPointerEnter={() => name && setHoveredBone(name)}
+      onPointerLeave={() => name && setHoveredBone(null)}
+    >
+      {/* Bone shaft - cylindrical middle section */}
+      <mesh ref={shaftRef}>
+        <cylinderGeometry args={[radius * 1.2, radius * 1.2, 1, 12]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.3} />
+      </mesh>
+      {/* Bone heads hidden for cleaner arm visualization */}
+      <mesh ref={headStartRef} visible={false}>
+        <sphereGeometry args={[1, 12, 12]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.3} />
+      </mesh>
+      <mesh ref={headEndRef} visible={false}>
+        <sphereGeometry args={[1, 12, 12]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.3} />
+      </mesh>
+    </group>
+  );
+}
+
 // Realistic bone with bone heads (epiphysis) and shaft (diaphysis)
 function Bone({
   handLandmarks,
@@ -69,21 +207,21 @@ function Bone({
   useFrame(() => {
     if (!groupRef.current || !shaftRef.current || !headStartRef.current || !headEndRef.current || !handLandmarks) return;
 
-    // Convert MediaPipe normalized coordinates to 3D space
-    const aspect = window.innerWidth / window.innerHeight;
-    const vFOV = (75 * Math.PI) / 180;
-    const camDistance = 2;
-    const height = 2 * Math.tan(vFOV / 2) * camDistance;
-    const width = height * aspect;
-
     const getPos = (index: number): THREE.Vector3 | null => {
       const lm = handLandmarks[index];
       if (!lm || (lm.visibility !== undefined && lm.visibility < 0.5)) return null;
 
+      const aspect = window.innerWidth / window.innerHeight;
+      const fov = 75;
+      const vFOV = (fov * Math.PI) / 180;
+      const camDistance = 2;
+      const height = 2 * Math.tan(vFOV / 2) * camDistance;
+      const width = height * aspect;
+
       return new THREE.Vector3(
-        -(lm.x - 0.5) * width,
-        -(lm.y - 0.5) * height,
-        lm.z * -2
+        (lm.x - 0.5) * width * -1,
+        (lm.y - 0.5) * height * -1,
+        0  // Keep all bones at same depth for perfect alignment with 2D overlay
       );
     };
 
@@ -775,6 +913,181 @@ function CarpalBones({ handLandmarks }: { handLandmarks: any }) {
   );
 }
 
+// Forearm bones (radius and ulna) positioned side by side
+function ForearmBones({ landmarks }: { landmarks: any }) {
+  const poseLandmarks = landmarks?.poseLandmarks;
+  const handLandmarks = landmarks?.rightHandLandmarks;
+
+  const groupRef = useRef<THREE.Group>(null);
+  const radiusShaftRef = useRef<THREE.Mesh>(null);
+  const ulnaShaftRef = useRef<THREE.Mesh>(null);
+  const { setHoveredBone } = useContext(HoverContext);
+
+  useFrame(() => {
+    if (!poseLandmarks || !radiusShaftRef.current || !ulnaShaftRef.current) return;
+
+    const aspect = window.innerWidth / window.innerHeight;
+    const fov = 75;
+    const vFOV = (fov * Math.PI) / 180;
+    const camDistance = 2;
+    const height = 2 * Math.tan(vFOV / 2) * camDistance;
+    const width = height * aspect;
+
+    const getPosePos = (index: number): THREE.Vector3 | null => {
+      const lm = poseLandmarks[index];
+      if (!lm || (lm.visibility !== undefined && lm.visibility < 0.5)) return null;
+      return new THREE.Vector3(
+        (lm.x - 0.5) * width * -1,
+        (lm.y - 0.5) * height * -1,
+        0  // Keep all bones at same depth for perfect alignment with 2D overlay
+      );
+    };
+
+    const getHandPos = (index: number): THREE.Vector3 | null => {
+      if (!handLandmarks) return null;
+      const lm = handLandmarks[index];
+      if (!lm || (lm.visibility !== undefined && lm.visibility < 0.5)) return null;
+      return new THREE.Vector3(
+        (lm.x - 0.5) * width * -1,
+        (lm.y - 0.5) * height * -1,
+        0  // Keep all bones at same depth for perfect alignment with 2D overlay
+      );
+    };
+
+    const elbow = getPosePos(POSE_LANDMARKS.RIGHT_ELBOW);
+    // Use hand wrist if available, otherwise fall back to pose wrist
+    const wrist = getHandPos(HAND_LANDMARKS.WRIST) || getPosePos(POSE_LANDMARKS.RIGHT_WRIST);
+
+    if (!elbow || !wrist) {
+      if (radiusShaftRef.current) radiusShaftRef.current.visible = false;
+      if (ulnaShaftRef.current) ulnaShaftRef.current.visible = false;
+      return;
+    }
+
+    // Calculate perpendicular offset to separate radius and ulna side by side
+    const forearmDirection = new THREE.Vector3().subVectors(wrist, elbow).normalize();
+    // Create a perpendicular vector (cross with up vector to get side-to-side offset)
+    const perpendicular = new THREE.Vector3().crossVectors(forearmDirection, new THREE.Vector3(0, 1, 0)).normalize();
+    const offsetDistance = 0.08; // Larger offset to separate the bones side by side
+
+    // Radius on one side (thumb side)
+    const radiusElbow = elbow.clone().add(perpendicular.clone().multiplyScalar(-offsetDistance));
+    const radiusWrist = wrist.clone().add(perpendicular.clone().multiplyScalar(-offsetDistance));
+
+    // Ulna on the other side (pinky side)
+    const ulnaElbow = elbow.clone().add(perpendicular.clone().multiplyScalar(offsetDistance));
+    const ulnaWrist = wrist.clone().add(perpendicular.clone().multiplyScalar(offsetDistance));
+
+    // Position and scale radius - full length to match landmarks exactly
+    const radiusLength = radiusElbow.distanceTo(radiusWrist);
+    const radiusMid = new THREE.Vector3().addVectors(radiusElbow, radiusWrist).multiplyScalar(0.5);
+    const radiusDirection = new THREE.Vector3().subVectors(radiusWrist, radiusElbow).normalize();
+
+    radiusShaftRef.current.position.copy(radiusMid);
+    radiusShaftRef.current.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), radiusDirection);
+    radiusShaftRef.current.scale.set(1, radiusLength, 1);
+    radiusShaftRef.current.visible = true;
+
+    // Position and scale ulna - full length to match landmarks exactly
+    const ulnaLength = ulnaElbow.distanceTo(ulnaWrist);
+    const ulnaMid = new THREE.Vector3().addVectors(ulnaElbow, ulnaWrist).multiplyScalar(0.5);
+    const ulnaDirection = new THREE.Vector3().subVectors(ulnaWrist, ulnaElbow).normalize();
+
+    ulnaShaftRef.current.position.copy(ulnaMid);
+    ulnaShaftRef.current.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), ulnaDirection);
+    ulnaShaftRef.current.scale.set(1, ulnaLength, 1);
+    ulnaShaftRef.current.visible = true;
+  });
+
+  return (
+    <group ref={groupRef}>
+      {/* Radius - thumb side */}
+      <mesh
+        ref={radiusShaftRef}
+        onPointerEnter={() => setHoveredBone("Radius (Forearm - Thumb Side)")}
+        onPointerLeave={() => setHoveredBone(null)}
+      >
+        <cylinderGeometry args={[0.012, 0.012, 1, 12]} />
+        <meshStandardMaterial color="#FFFFFF" emissive="#FFFFFF" emissiveIntensity={0.3} />
+      </mesh>
+
+      {/* Ulna - pinky side */}
+      <mesh
+        ref={ulnaShaftRef}
+        onPointerEnter={() => setHoveredBone("Ulna (Forearm - Pinky Side)")}
+        onPointerLeave={() => setHoveredBone(null)}
+      >
+        <cylinderGeometry args={[0.012, 0.012, 1, 12]} />
+        <meshStandardMaterial color="#FFFFFF" emissive="#FFFFFF" emissiveIntensity={0.3} />
+      </mesh>
+    </group>
+  );
+}
+
+// Debug joint spheres to visualize landmark positions
+function DebugJoint({ poseLandmarks, index, color = "#FF0000" }: { poseLandmarks: any; index: number; color?: string }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  useFrame(({ camera }) => {
+    if (!meshRef.current || !poseLandmarks) return;
+
+    const lm = poseLandmarks[index];
+    if (!lm || (lm.visibility !== undefined && lm.visibility < 0.5)) {
+      meshRef.current.visible = false;
+      return;
+    }
+
+    meshRef.current.visible = true;
+
+    // Use the exact same coordinate transformation as PoseBone
+    const aspect = window.innerWidth / window.innerHeight;
+    const vFOV = (75 * Math.PI) / 180;
+    const camDistance = 2;
+    const height = 2 * Math.tan(vFOV / 2) * camDistance;
+    const width = height * aspect;
+
+    meshRef.current.position.set(
+      -(lm.x - 0.5) * width,
+      -(lm.y - 0.5) * height,
+      lm.z * -2
+    );
+  });
+
+  return (
+    <mesh ref={meshRef}>
+      <sphereGeometry args={[0.03, 16, 16]} />
+      <meshBasicMaterial color={color} transparent opacity={0.8} />
+    </mesh>
+  );
+}
+
+// Arm skeleton (humerus, radius, ulna)
+function ArmSkeleton({ landmarks }: { landmarks: any }) {
+  const poseLandmarks = landmarks?.poseLandmarks;
+  const handLandmarks = landmarks?.rightHandLandmarks;
+
+  if (!poseLandmarks) return null;
+
+  return (
+    <group>
+      {/* ===== RIGHT ARM BONES ===== */}
+
+      {/* HUMERUS - Upper arm bone (shoulder to elbow) */}
+      <PoseBone
+        poseLandmarks={poseLandmarks}
+        startIndex={POSE_LANDMARKS.RIGHT_SHOULDER}
+        endIndex={POSE_LANDMARKS.RIGHT_ELBOW}
+        radius={0.025}
+        color="#FFFFFF"
+        name="Humerus (Upper Arm)"
+      />
+
+      {/* RADIUS & ULNA - Forearm bones positioned side by side */}
+      <ForearmBones landmarks={landmarks} />
+    </group>
+  );
+}
+
 // Hand skeleton using anatomically accurate procedural bones
 function HandSkeleton({ landmarks }: { landmarks: any }) {
   const handLandmarks = landmarks?.rightHandLandmarks;
@@ -797,7 +1110,7 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
         startIndex={HAND_LANDMARKS.THUMB_CMC}
         endIndex={HAND_LANDMARKS.THUMB_MCP}
         radius={0.014}
-        color="#FFD700"
+        color="#FFFFFF"
         name="1st Metacarpal (Thumb)"
       />
       <Bone
@@ -805,7 +1118,7 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
         startIndex={HAND_LANDMARKS.THUMB_MCP}
         endIndex={HAND_LANDMARKS.THUMB_IP}
         radius={0.013}
-        color="#FFD700"
+        color="#FFFFFF"
         name="Thumb Proximal Phalanx"
       />
       {/* Distal Phalanx of Thumb */}
@@ -814,7 +1127,7 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
         startIndex={HAND_LANDMARKS.THUMB_IP}
         endIndex={HAND_LANDMARKS.THUMB_TIP}
         radius={0.012}
-        color="#FFFF00"
+        color="#FFFFFF"
         name="Thumb Distal Phalanx"
       />
 
@@ -825,7 +1138,7 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
         startIndex={HAND_LANDMARKS.INDEX_MCP}
         endIndex={HAND_LANDMARKS.INDEX_PIP}
         radius={0.013}
-        color="#FFD700"
+        color="#FFFFFF"
         name="Index Proximal Phalanx"
       />
       {/* Middle Phalanx */}
@@ -834,7 +1147,7 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
         startIndex={HAND_LANDMARKS.INDEX_PIP}
         endIndex={HAND_LANDMARKS.INDEX_DIP}
         radius={0.011}
-        color="#FFFF00"
+        color="#FFFFFF"
         name="Index Middle Phalanx"
       />
       {/* Distal Phalanx */}
@@ -854,7 +1167,7 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
         startIndex={HAND_LANDMARKS.MIDDLE_MCP}
         endIndex={HAND_LANDMARKS.MIDDLE_PIP}
         radius={0.013}
-        color="#FFD700"
+        color="#FFFFFF"
         name="Middle Proximal Phalanx"
       />
       {/* Middle Phalanx */}
@@ -863,7 +1176,7 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
         startIndex={HAND_LANDMARKS.MIDDLE_PIP}
         endIndex={HAND_LANDMARKS.MIDDLE_DIP}
         radius={0.011}
-        color="#FFFF00"
+        color="#FFFFFF"
         name="Middle Middle Phalanx"
       />
       {/* Distal Phalanx */}
@@ -883,7 +1196,7 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
         startIndex={HAND_LANDMARKS.RING_MCP}
         endIndex={HAND_LANDMARKS.RING_PIP}
         radius={0.012}
-        color="#FFD700"
+        color="#FFFFFF"
         name="Ring Proximal Phalanx"
       />
       {/* Middle Phalanx */}
@@ -892,7 +1205,7 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
         startIndex={HAND_LANDMARKS.RING_PIP}
         endIndex={HAND_LANDMARKS.RING_DIP}
         radius={0.010}
-        color="#FFFF00"
+        color="#FFFFFF"
         name="Ring Middle Phalanx"
       />
       {/* Distal Phalanx */}
@@ -912,7 +1225,7 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
         startIndex={HAND_LANDMARKS.PINKY_MCP}
         endIndex={HAND_LANDMARKS.PINKY_PIP}
         radius={0.011}
-        color="#FFD700"
+        color="#FFFFFF"
         name="Pinky Proximal Phalanx"
       />
       {/* Middle Phalanx */}
@@ -921,7 +1234,7 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
         startIndex={HAND_LANDMARKS.PINKY_PIP}
         endIndex={HAND_LANDMARKS.PINKY_DIP}
         radius={0.009}
-        color="#FFFF00"
+        color="#FFFFFF"
         name="Pinky Middle Phalanx"
       />
       {/* Distal Phalanx */}
@@ -1021,6 +1334,7 @@ export default function AvatarRig({ landmarks }: AvatarRigProps) {
           <directionalLight position={[5, 5, 5]} intensity={1} />
           <directionalLight position={[-5, -5, -5]} intensity={0.5} />
 
+          <ArmSkeleton landmarks={landmarks} />
           <HandSkeleton landmarks={landmarks} />
         </Canvas>
         <HoverLabel />
