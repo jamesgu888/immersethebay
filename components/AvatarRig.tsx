@@ -12,13 +12,21 @@ interface AvatarRigProps {
   landmarks: any; // MediaPipe Holistic results
 }
 
-// Context for hover state
-const HoverContext = createContext<{
+// Context for hover and click state
+const BoneContext = createContext<{
   hoveredBone: string | null;
   setHoveredBone: (name: string | null) => void;
+  selectedBone: string | null;
+  setSelectedBone: (name: string | null) => void;
+  bonePosition: { x: number; y: number } | null;
+  setBonePosition: (pos: { x: number; y: number } | null) => void;
 }>({
   hoveredBone: null,
   setHoveredBone: () => {},
+  selectedBone: null,
+  setSelectedBone: () => {},
+  bonePosition: null,
+  setBonePosition: () => {},
 });
 
 // MediaPipe Hand landmark indices (21 points per hand)
@@ -103,9 +111,9 @@ function PoseBone({
   const shaftRef = useRef<THREE.Mesh>(null);
   const headStartRef = useRef<THREE.Mesh>(null);
   const headEndRef = useRef<THREE.Mesh>(null);
-  const { setHoveredBone } = useContext(HoverContext);
+  const { hoveredBone, setHoveredBone, selectedBone, setSelectedBone, setBonePosition } = useContext(BoneContext);
 
-  useFrame(() => {
+  useFrame(({ camera }) => {
     if (!groupRef.current || !shaftRef.current || !headStartRef.current || !headEndRef.current || !poseLandmarks) return;
 
     const getPos = (index: number): THREE.Vector3 | null => {
@@ -133,6 +141,11 @@ function PoseBone({
 
     if (!start || !end) {
       groupRef.current.visible = false;
+      // If this bone is selected and disappears, clear the position and selection
+      if (name && selectedBone === name) {
+        setBonePosition(null);
+        setSelectedBone(null);
+      }
       return;
     }
 
@@ -158,6 +171,15 @@ function PoseBone({
 
     headEndRef.current.position.set(0, boneLength / 2, 0);
     headEndRef.current.scale.set(headSize, headSize, headSize);
+
+    // Update screen position if this bone is selected (clicked)
+    if (name && selectedBone === name) {
+      const screenPos = midpoint.clone().project(camera);
+      const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+      const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+      setBonePosition({ x, y });
+      console.log('Bone useFrame: Setting position for', name, { x, y });
+    }
   });
 
   return (
@@ -165,6 +187,13 @@ function PoseBone({
       ref={groupRef}
       onPointerEnter={() => name && setHoveredBone(name)}
       onPointerLeave={() => name && setHoveredBone(null)}
+      onClick={(e) => {
+        if (!name) return;
+        e.stopPropagation();
+        console.log('Bone clicked:', name);
+        setSelectedBone(name);
+        setHoveredBone(null); // Clear hover when clicked
+      }}
     >
       {/* Bone shaft - cylindrical middle section */}
       <mesh ref={shaftRef}>
@@ -204,9 +233,9 @@ function Bone({
   const shaftRef = useRef<THREE.Mesh>(null);
   const headStartRef = useRef<THREE.Mesh>(null);
   const headEndRef = useRef<THREE.Mesh>(null);
-  const { setHoveredBone } = useContext(HoverContext);
+  const { hoveredBone, setHoveredBone, selectedBone, setSelectedBone, setBonePosition } = useContext(BoneContext);
 
-  useFrame(() => {
+  useFrame(({ camera }) => {
     if (!groupRef.current || !shaftRef.current || !headStartRef.current || !headEndRef.current || !handLandmarks) return;
 
     const getPos = (index: number): THREE.Vector3 | null => {
@@ -232,6 +261,11 @@ function Bone({
 
     if (!start || !end) {
       groupRef.current.visible = false;
+      // If this bone is selected and disappears, clear the position and selection
+      if (name && selectedBone === name) {
+        setBonePosition(null);
+        setSelectedBone(null);
+      }
       return;
     }
 
@@ -258,6 +292,15 @@ function Bone({
 
     headEndRef.current.position.set(0, boneLength / 2, 0);
     headEndRef.current.scale.set(headSize, headSize, headSize);
+
+    // Update screen position if this bone is selected (clicked)
+    if (name && selectedBone === name) {
+      const screenPos = midpoint.clone().project(camera);
+      const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+      const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+      setBonePosition({ x, y });
+      console.log('Bone useFrame: Setting position for', name, { x, y });
+    }
   });
 
   return (
@@ -265,6 +308,13 @@ function Bone({
       ref={groupRef}
       onPointerEnter={() => name && setHoveredBone(name)}
       onPointerLeave={() => name && setHoveredBone(null)}
+      onClick={(e) => {
+        if (!name) return;
+        e.stopPropagation();
+        console.log('Bone clicked:', name);
+        setSelectedBone(name);
+        setHoveredBone(null); // Clear hover when clicked
+      }}
     >
       {/* Bone shaft - cylindrical middle section */}
       <mesh ref={shaftRef}>
@@ -330,9 +380,9 @@ function Joint({
   );
 }
 
-// Single hover label that follows the mouse
+// Single hover label that appears near the hovered bone
 function HoverLabel() {
-  const { hoveredBone } = useContext(HoverContext);
+  const { hoveredBone, selectedBone, bonePosition } = useContext(BoneContext);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -341,20 +391,34 @@ function HoverLabel() {
     };
 
     window.addEventListener('mousemove', handleMouseMove);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-    };
+    return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  // Trigger anatomy info box when bone is hovered
+  // Trigger anatomy info box when bone is selected (clicked)
   useEffect(() => {
-    if (hoveredBone && (window as any).showAnatomyInfo) {
-      (window as any).showAnatomyInfo(hoveredBone);
+    if (selectedBone && (window as any).showAnatomyInfo) {
+      (window as any).showAnatomyInfo(selectedBone);
     }
-  }, [hoveredBone]);
+  }, [selectedBone]);
 
-  if (!hoveredBone) return null;
+  // Update global bone position - keep it set while bone is selected
+  useEffect(() => {
+    if (bonePosition) {
+      (window as any).bonePosition = bonePosition;
+      console.log('HoverLabel: Updating window.bonePosition', bonePosition, 'for bone', selectedBone);
+    }
+  }, [bonePosition]);
+
+  // Clear position only when no bone is selected
+  useEffect(() => {
+    if (!selectedBone) {
+      (window as any).bonePosition = null;
+      console.log('HoverLabel: Clearing window.bonePosition - no bone selected');
+    }
+  }, [selectedBone]);
+
+  // Only show hover label when hovering and no bone is selected
+  if (!hoveredBone || selectedBone) return null;
 
   return (
     <div
@@ -362,15 +426,16 @@ function HoverLabel() {
         position: 'fixed',
         left: mousePos.x + 15,
         top: mousePos.y + 15,
-        background: 'rgba(0, 0, 0, 0.8)',
+        background: 'rgba(0, 0, 0, 0.85)',
         color: 'white',
-        padding: '4px 8px',
+        padding: '6px 12px',
         borderRadius: '4px',
         fontSize: '12px',
-        fontWeight: 'bold',
+        fontWeight: '500',
         pointerEvents: 'none',
         zIndex: 1000,
         whiteSpace: 'nowrap',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
       }}
     >
       {hoveredBone}
@@ -593,7 +658,7 @@ function MetacarpalBone({
   const shaftRef = useRef<THREE.Mesh>(null);
   const headStartRef = useRef<THREE.Mesh>(null);
   const headEndRef = useRef<THREE.Mesh>(null);
-  const { setHoveredBone } = useContext(HoverContext);
+  const { hoveredBone, setHoveredBone, selectedBone, setSelectedBone, setBonePosition } = useContext(BoneContext);
 
   useFrame(() => {
     if (!groupRef.current || !shaftRef.current || !headStartRef.current || !headEndRef.current || !handLandmarks) return;
@@ -669,6 +734,13 @@ function MetacarpalBone({
       ref={groupRef}
       onPointerEnter={() => name && setHoveredBone(name)}
       onPointerLeave={() => name && setHoveredBone(null)}
+      onClick={(e) => {
+        if (!name) return;
+        e.stopPropagation();
+        console.log('Bone clicked:', name);
+        setSelectedBone(name);
+        setHoveredBone(null); // Clear hover when clicked
+      }}
     >
       <mesh ref={shaftRef}>
         <cylinderGeometry args={[radius * 1.2, radius * 1.2, 1, 12]} />
@@ -702,7 +774,7 @@ function CarpalBone({
   name?: string;
 }) {
   const meshRef = useRef<THREE.Mesh>(null);
-  const { setHoveredBone } = useContext(HoverContext);
+  const { hoveredBone, setHoveredBone, selectedBone, setSelectedBone, setBonePosition } = useContext(BoneContext);
 
   useFrame(() => {
     if (!meshRef.current || !handLandmarks) return;
@@ -771,6 +843,13 @@ function CarpalBone({
       ref={meshRef}
       onPointerEnter={() => name && setHoveredBone(name)}
       onPointerLeave={() => name && setHoveredBone(null)}
+      onClick={(e) => {
+        if (!name) return;
+        e.stopPropagation();
+        console.log('Bone clicked:', name);
+        setSelectedBone(name);
+        setHoveredBone(null); // Clear hover when clicked
+      }}
     >
       <boxGeometry args={[0.045, 0.035, 0.045]} />
       <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4} />
@@ -930,9 +1009,9 @@ function ForearmBones({ landmarks, isLeft = false }: { landmarks: any; isLeft?: 
   const groupRef = useRef<THREE.Group>(null);
   const radiusShaftRef = useRef<THREE.Mesh>(null);
   const ulnaShaftRef = useRef<THREE.Mesh>(null);
-  const { setHoveredBone } = useContext(HoverContext);
+  const { hoveredBone, setHoveredBone, selectedBone, setSelectedBone, setBonePosition } = useContext(BoneContext);
 
-  useFrame(() => {
+  useFrame(({ camera }) => {
     if (!poseLandmarks || !radiusShaftRef.current || !ulnaShaftRef.current) return;
 
     const aspect = window.innerWidth / window.innerHeight;
@@ -973,6 +1052,11 @@ function ForearmBones({ landmarks, isLeft = false }: { landmarks: any; isLeft?: 
     if (!elbow || !wrist) {
       if (radiusShaftRef.current) radiusShaftRef.current.visible = false;
       if (ulnaShaftRef.current) ulnaShaftRef.current.visible = false;
+      // Clear position if these bones are selected
+      if (selectedBone === "Radius (Forearm - Thumb Side)" || selectedBone === "Ulna (Forearm - Pinky Side)") {
+        setBonePosition(null);
+        setSelectedBone(null);
+      }
       return;
     }
 
@@ -1009,6 +1093,21 @@ function ForearmBones({ landmarks, isLeft = false }: { landmarks: any; isLeft?: 
     ulnaShaftRef.current.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), ulnaDirection);
     ulnaShaftRef.current.scale.set(1, ulnaLength, 1);
     ulnaShaftRef.current.visible = true;
+
+    // Update screen position if one of these bones is selected (clicked)
+    if (selectedBone === "Radius (Forearm - Thumb Side)") {
+      const screenPos = radiusMid.clone().project(camera);
+      const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+      const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+      setBonePosition({ x, y });
+      console.log('ForearmBones useFrame: Setting position for Radius', { x, y });
+    } else if (selectedBone === "Ulna (Forearm - Pinky Side)") {
+      const screenPos = ulnaMid.clone().project(camera);
+      const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+      const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+      setBonePosition({ x, y });
+      console.log('ForearmBones useFrame: Setting position for Ulna', { x, y });
+    }
   });
 
   return (
@@ -1018,6 +1117,11 @@ function ForearmBones({ landmarks, isLeft = false }: { landmarks: any; isLeft?: 
         ref={radiusShaftRef}
         onPointerEnter={() => setHoveredBone("Radius (Forearm - Thumb Side)")}
         onPointerLeave={() => setHoveredBone(null)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedBone("Radius (Forearm - Thumb Side)");
+          setHoveredBone(null);
+        }}
       >
         <cylinderGeometry args={[0.012, 0.012, 1, 12]} />
         <meshStandardMaterial color="#FFFFFF" emissive="#FFFFFF" emissiveIntensity={0.3} />
@@ -1028,6 +1132,11 @@ function ForearmBones({ landmarks, isLeft = false }: { landmarks: any; isLeft?: 
         ref={ulnaShaftRef}
         onPointerEnter={() => setHoveredBone("Ulna (Forearm - Pinky Side)")}
         onPointerLeave={() => setHoveredBone(null)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedBone("Ulna (Forearm - Pinky Side)");
+          setHoveredBone(null);
+        }}
       >
         <cylinderGeometry args={[0.012, 0.012, 1, 12]} />
         <meshStandardMaterial color="#FFFFFF" emissive="#FFFFFF" emissiveIntensity={0.3} />
@@ -1525,9 +1634,26 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
 // Main canvas wrapper component
 export default function AvatarRig({ landmarks }: AvatarRigProps) {
   const [hoveredBone, setHoveredBone] = useState<string | null>(null);
+  const [selectedBone, setSelectedBone] = useState<string | null>(null);
+  const [bonePosition, setBonePosition] = useState<{ x: number; y: number } | null>(null);
+
+  // Debug: Log when hoveredBone changes
+  useEffect(() => {
+    console.log('AvatarRig: hoveredBone state changed to', hoveredBone);
+  }, [hoveredBone]);
+
+  // Debug: Log when selectedBone changes
+  useEffect(() => {
+    console.log('AvatarRig: selectedBone state changed to', selectedBone);
+  }, [selectedBone]);
+
+  // Debug: Log when bonePosition changes
+  useEffect(() => {
+    console.log('AvatarRig: bonePosition state changed to', bonePosition);
+  }, [bonePosition]);
 
   return (
-    <HoverContext.Provider value={{ hoveredBone, setHoveredBone }}>
+    <BoneContext.Provider value={{ hoveredBone, setHoveredBone, selectedBone, setSelectedBone, bonePosition, setBonePosition }}>
       <div className="absolute inset-0 pointer-events-none">
         <Canvas
           camera={{
@@ -1548,6 +1674,6 @@ export default function AvatarRig({ landmarks }: AvatarRigProps) {
         </Canvas>
         <HoverLabel />
       </div>
-    </HoverContext.Provider>
+    </BoneContext.Provider>
   );
 }

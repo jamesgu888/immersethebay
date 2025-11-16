@@ -12,6 +12,7 @@ export default function AnatomyInfoBox() {
   const [boneName, setBoneName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const lastFetchTimeRef = useRef<number>(0);
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
 
   async function fetchAnatomyInfo(structureName: string) {
     // Rate limit: only allow one request per second
@@ -59,8 +60,45 @@ export default function AnatomyInfoBox() {
     (window as any).showAnatomyInfo = fetchAnatomyInfo;
   }, []);
 
+  // Update position when bone is selected - tracks continuously
+  useEffect(() => {
+    const checkPosition = () => {
+      const globalPosition = (window as any).bonePosition;
+      if (globalPosition) {
+        setPosition(globalPosition);
+        console.log('Setting position:', globalPosition);
+      } else {
+        // Clear position when bone is no longer selected
+        setPosition(null);
+      }
+    };
+
+    // Check periodically for position updates (60fps)
+    const interval = setInterval(checkPosition, 16);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Calculate position - if we have bone position, place near it, otherwise default position
+  const boxStyle: React.CSSProperties = position
+    ? {
+        position: 'fixed',
+        left: `${Math.min(position.x + 20, window.innerWidth - 340)}px`,
+        top: `${Math.min(position.y + 20, window.innerHeight - 300)}px`,
+        transition: 'left 0.15s ease-out, top 0.15s ease-out',
+      }
+    : {
+        position: 'absolute',
+        top: '5rem',
+        left: '1rem',
+        transition: 'left 0.3s ease-out, top 0.3s ease-out',
+      };
+
   return (
-    <div className="absolute top-20 left-4 w-80 bg-white/90 text-black rounded-lg shadow-md border border-gray-200 backdrop-blur flex flex-col max-h-[calc(100vh-6rem)]">
+    <div
+      style={boxStyle}
+      className="w-80 bg-white/90 text-black rounded-lg shadow-md border border-gray-200 backdrop-blur flex flex-col max-h-[calc(100vh-6rem)]"
+    >
       <div className="px-4 pt-4 pb-0 border-b border-gray-200 flex-shrink-0">
         <h2 className="font-semibold text-lg">
           {boneName || "Anatomy Information"}
@@ -74,7 +112,7 @@ export default function AnatomyInfoBox() {
           </div>
         ) : (
           <p className="text-sm whitespace-pre-line leading-relaxed">
-            {text || "Hover over a bone to learn more."}
+            {text || "Click on a bone to learn more."}
           </p>
         )}
       </div>
