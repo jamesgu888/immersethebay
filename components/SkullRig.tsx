@@ -10,9 +10,7 @@ export default function SkullRig({ faceLandmarks }: { faceLandmarks: any }) {
 
   // Load skull model
   const gltf = useGLTF("/skull.glb");
-    const scene = gltf.scene || gltf.scenes?.[0];
-
-    console.log("Loaded GLTF:", gltf, "Scene:", scene);
+  const scene = gltf.scene || gltf.scenes?.[0];
 
 
   // Single material for entire skull
@@ -20,8 +18,8 @@ export default function SkullRig({ faceLandmarks }: { faceLandmarks: any }) {
     () =>
       new THREE.MeshStandardMaterial({
         color: "white",
-        transparent: false,
-        opacity: 1.0,         // Fully opaque
+        transparent: true,
+        opacity: 0.0,         // Invisible for testing
         roughness: 0.9,
         metalness: 0.0,
       }),

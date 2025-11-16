@@ -373,7 +373,10 @@ export default function Camera() {
 
           {/* Top overlay with title */}
           <div className="absolute top-0 left-0 right-0 p-6 bg-gradient-to-b from-black/70 to-transparent">
-            <h1 className="text-3xl font-bold text-white">Anatomy Augmentation</h1>
+            <h1 className="text-3xl font-bold text-white flex items-center gap-1">
+              <img src="/anatomist.png" alt="A" className="h-10 w-10" />
+              <span>natomist</span>
+            </h1>
           </div>
 
           {/* Bottom overlay with controls and detected parts */}
@@ -420,7 +423,10 @@ export default function Camera() {
         // Landing page
         <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-8 bg-background">
           <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold">Anatomy Augmentation</h1>
+            <h1 className="text-4xl font-bold flex items-center justify-center gap-1">
+              <img src="/anatomist.png" alt="A" className="h-12 w-12" />
+              <span>natomist</span>
+            </h1>
             <p className="text-muted-foreground">
               Real-time body part detection for anatomical visualization
             </p>

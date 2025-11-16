@@ -18,7 +18,6 @@ export default function AnatomyInfoBox() {
     // Rate limit: only allow one request per second
     const now = Date.now();
     if (now - lastFetchTimeRef.current < 1000) {
-      console.log("Rate limited - too soon since last request");
       return;
     }
     lastFetchTimeRef.current = now;
@@ -66,10 +65,11 @@ export default function AnatomyInfoBox() {
       const globalPosition = (window as any).bonePosition;
       if (globalPosition) {
         setPosition(globalPosition);
-        console.log('Setting position:', globalPosition);
       } else {
         // Clear position when bone is no longer selected
-        setPosition(null);
+        if (position !== null) {
+          setPosition(null);
+        }
       }
     };
 
@@ -77,7 +77,15 @@ export default function AnatomyInfoBox() {
     const interval = setInterval(checkPosition, 16);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [position]);
+
+  // Clear text when position is cleared
+  useEffect(() => {
+    if (!position) {
+      setText("");
+      setBoneName("");
+    }
+  }, [position]);
 
   // Calculate position - if we have bone position, place near it, otherwise default position
   const boxStyle: React.CSSProperties = position
@@ -86,12 +94,14 @@ export default function AnatomyInfoBox() {
         left: `${Math.min(position.x + 20, window.innerWidth - 340)}px`,
         top: `${Math.min(position.y + 20, window.innerHeight - 300)}px`,
         transition: 'left 0.15s ease-out, top 0.15s ease-out',
+        zIndex: 9999,
       }
     : {
         position: 'absolute',
         top: '5rem',
         left: '1rem',
         transition: 'left 0.3s ease-out, top 0.3s ease-out',
+        zIndex: 9999,
       };
 
   return (

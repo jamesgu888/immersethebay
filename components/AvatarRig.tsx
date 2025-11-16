@@ -20,6 +20,9 @@ const BoneContext = createContext<{
   setSelectedBone: (name: string | null) => void;
   bonePosition: { x: number; y: number } | null;
   setBonePosition: (pos: { x: number; y: number } | null) => void;
+  visibleBones: Set<string>;
+  addVisibleBone: (name: string) => void;
+  removeVisibleBone: (name: string) => void;
 }>({
   hoveredBone: null,
   setHoveredBone: () => {},
@@ -27,6 +30,9 @@ const BoneContext = createContext<{
   setSelectedBone: () => {},
   bonePosition: null,
   setBonePosition: () => {},
+  visibleBones: new Set(),
+  addVisibleBone: () => {},
+  removeVisibleBone: () => {},
 });
 
 // MediaPipe Hand landmark indices (21 points per hand)
@@ -111,10 +117,23 @@ function PoseBone({
   const shaftRef = useRef<THREE.Mesh>(null);
   const headStartRef = useRef<THREE.Mesh>(null);
   const headEndRef = useRef<THREE.Mesh>(null);
-  const { hoveredBone, setHoveredBone, selectedBone, setSelectedBone, setBonePosition } = useContext(BoneContext);
+  const { hoveredBone, setHoveredBone, selectedBone, setSelectedBone, setBonePosition, addVisibleBone, removeVisibleBone } = useContext(BoneContext);
+
+  // Cleanup: remove from visible list when component unmounts
+  useEffect(() => {
+    return () => {
+      if (name) {
+        removeVisibleBone(name);
+      }
+    };
+  }, [name, removeVisibleBone]);
 
   useFrame(({ camera }) => {
-    if (!groupRef.current || !shaftRef.current || !headStartRef.current || !headEndRef.current || !poseLandmarks) return;
+    if (!groupRef.current || !shaftRef.current || !headStartRef.current || !headEndRef.current || !poseLandmarks) {
+      // Remove from visible bones if refs aren't ready
+      if (name) removeVisibleBone(name);
+      return;
+    }
 
     const getPos = (index: number): THREE.Vector3 | null => {
       const lm = poseLandmarks[index];
@@ -141,6 +160,8 @@ function PoseBone({
 
     if (!start || !end) {
       groupRef.current.visible = false;
+      // Remove from visible bones list
+      if (name) removeVisibleBone(name);
       // If this bone is selected and disappears, clear the position and selection
       if (name && selectedBone === name) {
         setBonePosition(null);
@@ -150,6 +171,8 @@ function PoseBone({
     }
 
     groupRef.current.visible = true;
+    // Add to visible bones list
+    if (name) addVisibleBone(name);
 
     // Calculate bone properties
     const boneLength = start.distanceTo(end);
@@ -174,11 +197,23 @@ function PoseBone({
 
     // Update screen position if this bone is selected (clicked)
     if (name && selectedBone === name) {
+      // Final check: if bone is not visible, clear selection
+      if (!groupRef.current.visible) {
+        removeVisibleBone(name);
+        setBonePosition(null);
+        setSelectedBone(null);
+        return;
+      }
+
       const screenPos = midpoint.clone().project(camera);
       const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
       const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
       setBonePosition({ x, y });
-      console.log('Bone useFrame: Setting position for', name, { x, y });
+    }
+
+    // Final visibility check - ensure we remove from list if not visible
+    if (name && !groupRef.current.visible) {
+      removeVisibleBone(name);
     }
   });
 
@@ -190,7 +225,6 @@ function PoseBone({
       onClick={(e) => {
         if (!name) return;
         e.stopPropagation();
-        console.log('Bone clicked:', name);
         setSelectedBone(name);
         setHoveredBone(null); // Clear hover when clicked
       }}
@@ -233,14 +267,38 @@ function Bone({
   const shaftRef = useRef<THREE.Mesh>(null);
   const headStartRef = useRef<THREE.Mesh>(null);
   const headEndRef = useRef<THREE.Mesh>(null);
-  const { hoveredBone, setHoveredBone, selectedBone, setSelectedBone, setBonePosition } = useContext(BoneContext);
+  const { hoveredBone, setHoveredBone, selectedBone, setSelectedBone, setBonePosition, addVisibleBone, removeVisibleBone } = useContext(BoneContext);
+
+  // Cleanup: remove from visible list when component unmounts
+  useEffect(() => {
+    return () => {
+      if (name) {
+        removeVisibleBone(name);
+      }
+    };
+  }, [name, removeVisibleBone]);
 
   useFrame(({ camera }) => {
-    if (!groupRef.current || !shaftRef.current || !headStartRef.current || !headEndRef.current || !handLandmarks) return;
+    if (!groupRef.current || !shaftRef.current || !headStartRef.current || !headEndRef.current) {
+      // Remove from visible bones if refs aren't ready
+      if (name) removeVisibleBone(name);
+      return;
+    }
+
+    if (!handLandmarks) {
+      groupRef.current.visible = false;
+      if (name) {
+        console.log('Bone: handLandmarks is null for:', name);
+        removeVisibleBone(name);
+      }
+      return;
+    }
 
     const getPos = (index: number): THREE.Vector3 | null => {
       const lm = handLandmarks[index];
-      if (!lm || (lm.visibility !== undefined && lm.visibility < 0.5)) return null;
+      if (!lm || (lm.visibility !== undefined && lm.visibility < 0.5)) {
+        return null;
+      }
 
       const aspect = window.innerWidth / window.innerHeight;
       const fov = 75;
@@ -261,6 +319,8 @@ function Bone({
 
     if (!start || !end) {
       groupRef.current.visible = false;
+      // Remove from visible bones list
+      if (name) removeVisibleBone(name);
       // If this bone is selected and disappears, clear the position and selection
       if (name && selectedBone === name) {
         setBonePosition(null);
@@ -270,6 +330,8 @@ function Bone({
     }
 
     groupRef.current.visible = true;
+    // Add to visible bones list
+    if (name) addVisibleBone(name);
 
     // Calculate bone properties
     const boneLength = start.distanceTo(end);
@@ -295,11 +357,23 @@ function Bone({
 
     // Update screen position if this bone is selected (clicked)
     if (name && selectedBone === name) {
+      // Final check: if bone is not visible, clear selection
+      if (!groupRef.current.visible) {
+        removeVisibleBone(name);
+        setBonePosition(null);
+        setSelectedBone(null);
+        return;
+      }
+
       const screenPos = midpoint.clone().project(camera);
       const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
       const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
       setBonePosition({ x, y });
-      console.log('Bone useFrame: Setting position for', name, { x, y });
+    }
+
+    // Final visibility check - ensure we remove from list if not visible
+    if (name && !groupRef.current.visible) {
+      removeVisibleBone(name);
     }
   });
 
@@ -311,7 +385,6 @@ function Bone({
       onClick={(e) => {
         if (!name) return;
         e.stopPropagation();
-        console.log('Bone clicked:', name);
         setSelectedBone(name);
         setHoveredBone(null); // Clear hover when clicked
       }}
@@ -382,7 +455,7 @@ function Joint({
 
 // Single hover label that appears near the hovered bone
 function HoverLabel() {
-  const { hoveredBone, selectedBone, bonePosition } = useContext(BoneContext);
+  const { hoveredBone, selectedBone, bonePosition, setBonePosition } = useContext(BoneContext);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -401,19 +474,17 @@ function HoverLabel() {
     }
   }, [selectedBone]);
 
-  // Update global bone position - keep it set while bone is selected
+  // Update global bone position - always sync with state
   useEffect(() => {
-    if (bonePosition) {
-      (window as any).bonePosition = bonePosition;
-      console.log('HoverLabel: Updating window.bonePosition', bonePosition, 'for bone', selectedBone);
-    }
+    (window as any).bonePosition = bonePosition;
   }, [bonePosition]);
 
-  // Clear position only when no bone is selected
+  // Clear position when no bone is selected
   useEffect(() => {
+    console.log('HoverLabel: selectedBone changed to', selectedBone);
     if (!selectedBone) {
-      (window as any).bonePosition = null;
-      console.log('HoverLabel: Clearing window.bonePosition - no bone selected');
+      console.log('HoverLabel: No bone selected, clearing bonePosition');
+      setBonePosition(null); // Clear the local state
     }
   }, [selectedBone]);
 
@@ -433,7 +504,7 @@ function HoverLabel() {
         fontSize: '12px',
         fontWeight: '500',
         pointerEvents: 'none',
-        zIndex: 1000,
+        zIndex: 9998,
         whiteSpace: 'nowrap',
         boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
       }}
@@ -658,10 +729,23 @@ function MetacarpalBone({
   const shaftRef = useRef<THREE.Mesh>(null);
   const headStartRef = useRef<THREE.Mesh>(null);
   const headEndRef = useRef<THREE.Mesh>(null);
-  const { hoveredBone, setHoveredBone, selectedBone, setSelectedBone, setBonePosition } = useContext(BoneContext);
+  const { hoveredBone, setHoveredBone, selectedBone, setSelectedBone, setBonePosition, addVisibleBone, removeVisibleBone } = useContext(BoneContext);
 
-  useFrame(() => {
-    if (!groupRef.current || !shaftRef.current || !headStartRef.current || !headEndRef.current || !handLandmarks) return;
+  // Cleanup: remove from visible list when component unmounts
+  useEffect(() => {
+    return () => {
+      if (name) {
+        removeVisibleBone(name);
+      }
+    };
+  }, [name, removeVisibleBone]);
+
+  useFrame(({ camera }) => {
+    if (!groupRef.current || !shaftRef.current || !headStartRef.current || !headEndRef.current || !handLandmarks) {
+      // Remove from visible bones if refs aren't ready
+      if (name) removeVisibleBone(name);
+      return;
+    }
 
     const aspect = window.innerWidth / window.innerHeight;
     const vFOV = (75 * Math.PI) / 180;
@@ -687,10 +771,19 @@ function MetacarpalBone({
 
     if (!wrist || !mcp || !middleMCP || !indexMCP || !pinkyMCP) {
       groupRef.current.visible = false;
+      // Remove from visible bones list
+      if (name) removeVisibleBone(name);
+      // If this bone is selected and disappears, clear the position and selection
+      if (name && selectedBone === name) {
+        setBonePosition(null);
+        setSelectedBone(null);
+      }
       return;
     }
 
     groupRef.current.visible = true;
+    // Add to visible bones list
+    if (name) addVisibleBone(name);
 
     // Calculate the palm orientation in 3D space (matching CarpalBone calculation)
     const palmDirection = new THREE.Vector3().subVectors(middleMCP, wrist).normalize();
@@ -727,6 +820,27 @@ function MetacarpalBone({
 
     headEndRef.current.position.set(0, boneLength / 2, 0);
     headEndRef.current.scale.set(headSize, headSize, headSize);
+
+    // Update screen position if this bone is selected (clicked)
+    if (name && selectedBone === name) {
+      // Final check: if bone is not visible, clear selection
+      if (!groupRef.current.visible) {
+        removeVisibleBone(name);
+        setBonePosition(null);
+        setSelectedBone(null);
+        return;
+      }
+
+      const screenPos = midpoint.clone().project(camera);
+      const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+      const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+      setBonePosition({ x, y });
+    }
+
+    // Final visibility check - ensure we remove from list if not visible
+    if (name && !groupRef.current.visible) {
+      removeVisibleBone(name);
+    }
   });
 
   return (
@@ -737,7 +851,6 @@ function MetacarpalBone({
       onClick={(e) => {
         if (!name) return;
         e.stopPropagation();
-        console.log('Bone clicked:', name);
         setSelectedBone(name);
         setHoveredBone(null); // Clear hover when clicked
       }}
@@ -774,10 +887,23 @@ function CarpalBone({
   name?: string;
 }) {
   const meshRef = useRef<THREE.Mesh>(null);
-  const { hoveredBone, setHoveredBone, selectedBone, setSelectedBone, setBonePosition } = useContext(BoneContext);
+  const { hoveredBone, setHoveredBone, selectedBone, setSelectedBone, setBonePosition, addVisibleBone, removeVisibleBone } = useContext(BoneContext);
 
-  useFrame(() => {
-    if (!meshRef.current || !handLandmarks) return;
+  // Cleanup: remove from visible list when component unmounts
+  useEffect(() => {
+    return () => {
+      if (name) {
+        removeVisibleBone(name);
+      }
+    };
+  }, [name, removeVisibleBone]);
+
+  useFrame(({ camera }) => {
+    if (!meshRef.current || !handLandmarks) {
+      // Remove from visible bones if refs aren't ready
+      if (name) removeVisibleBone(name);
+      return;
+    }
 
     const aspect = window.innerWidth / window.innerHeight;
     const vFOV = (75 * Math.PI) / 180;
@@ -803,10 +929,19 @@ function CarpalBone({
 
     if (!wrist || !indexMCP || !middleMCP || !ringMCP || !pinkyMCP) {
       meshRef.current.visible = false;
+      // Remove from visible bones list
+      if (name) removeVisibleBone(name);
+      // If this bone is selected and disappears, clear the position and selection
+      if (name && selectedBone === name) {
+        setBonePosition(null);
+        setSelectedBone(null);
+      }
       return;
     }
 
     meshRef.current.visible = true;
+    // Add to visible bones list
+    if (name) addVisibleBone(name);
 
     // Calculate the palm orientation in 3D space
     const palmDirection = new THREE.Vector3().subVectors(middleMCP, wrist).normalize();
@@ -836,6 +971,27 @@ function CarpalBone({
     const rotationMatrix = new THREE.Matrix4();
     rotationMatrix.makeBasis(palmRight, palmDirection, palmNormal);
     meshRef.current.rotation.setFromRotationMatrix(rotationMatrix);
+
+    // Update screen position if this bone is selected (clicked)
+    if (name && selectedBone === name) {
+      // Final check: if bone is not visible, clear selection
+      if (!meshRef.current.visible) {
+        removeVisibleBone(name);
+        setBonePosition(null);
+        setSelectedBone(null);
+        return;
+      }
+
+      const screenPos = basePos.clone().project(camera);
+      const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+      const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+      setBonePosition({ x, y });
+    }
+
+    // Final visibility check - ensure we remove from list if not visible
+    if (name && !meshRef.current.visible) {
+      removeVisibleBone(name);
+    }
   });
 
   return (
@@ -846,7 +1002,6 @@ function CarpalBone({
       onClick={(e) => {
         if (!name) return;
         e.stopPropagation();
-        console.log('Bone clicked:', name);
         setSelectedBone(name);
         setHoveredBone(null); // Clear hover when clicked
       }}
@@ -899,6 +1054,11 @@ function CarpalConnection({
 
     if (!wrist || !middleMCP || !indexMCP || !pinkyMCP) {
       meshRef.current.visible = false;
+      // If this bone is selected and disappears, clear the position and selection
+      if (name && selectedBone === name) {
+        setBonePosition(null);
+        setSelectedBone(null);
+      }
       return;
     }
 
@@ -1009,10 +1169,15 @@ function ForearmBones({ landmarks, isLeft = false }: { landmarks: any; isLeft?: 
   const groupRef = useRef<THREE.Group>(null);
   const radiusShaftRef = useRef<THREE.Mesh>(null);
   const ulnaShaftRef = useRef<THREE.Mesh>(null);
-  const { hoveredBone, setHoveredBone, selectedBone, setSelectedBone, setBonePosition } = useContext(BoneContext);
+  const { hoveredBone, setHoveredBone, selectedBone, setSelectedBone, setBonePosition, addVisibleBone, removeVisibleBone } = useContext(BoneContext);
 
   useFrame(({ camera }) => {
-    if (!poseLandmarks || !radiusShaftRef.current || !ulnaShaftRef.current) return;
+    if (!poseLandmarks || !radiusShaftRef.current || !ulnaShaftRef.current) {
+      // Remove from visible bones if refs aren't ready
+      removeVisibleBone("Radius (Forearm - Thumb Side)");
+      removeVisibleBone("Ulna (Forearm - Pinky Side)");
+      return;
+    }
 
     const aspect = window.innerWidth / window.innerHeight;
     const fov = 75;
@@ -1052,6 +1217,9 @@ function ForearmBones({ landmarks, isLeft = false }: { landmarks: any; isLeft?: 
     if (!elbow || !wrist) {
       if (radiusShaftRef.current) radiusShaftRef.current.visible = false;
       if (ulnaShaftRef.current) ulnaShaftRef.current.visible = false;
+      // Remove from visible bones list
+      removeVisibleBone("Radius (Forearm - Thumb Side)");
+      removeVisibleBone("Ulna (Forearm - Pinky Side)");
       // Clear position if these bones are selected
       if (selectedBone === "Radius (Forearm - Thumb Side)" || selectedBone === "Ulna (Forearm - Pinky Side)") {
         setBonePosition(null);
@@ -1059,6 +1227,10 @@ function ForearmBones({ landmarks, isLeft = false }: { landmarks: any; isLeft?: 
       }
       return;
     }
+
+    // Add to visible bones list
+    addVisibleBone("Radius (Forearm - Thumb Side)");
+    addVisibleBone("Ulna (Forearm - Pinky Side)");
 
     // Calculate perpendicular offset to separate radius and ulna side by side
     const forearmDirection = new THREE.Vector3().subVectors(wrist, elbow).normalize();
@@ -1078,6 +1250,7 @@ function ForearmBones({ landmarks, isLeft = false }: { landmarks: any; isLeft?: 
     const radiusLength = radiusElbow.distanceTo(radiusWrist);
     const radiusMid = new THREE.Vector3().addVectors(radiusElbow, radiusWrist).multiplyScalar(0.5);
     const radiusDirection = new THREE.Vector3().subVectors(radiusWrist, radiusElbow).normalize();
+    console.log('Radius 3D position:', radiusMid);
 
     radiusShaftRef.current.position.copy(radiusMid);
     radiusShaftRef.current.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), radiusDirection);
@@ -1088,6 +1261,7 @@ function ForearmBones({ landmarks, isLeft = false }: { landmarks: any; isLeft?: 
     const ulnaLength = ulnaElbow.distanceTo(ulnaWrist);
     const ulnaMid = new THREE.Vector3().addVectors(ulnaElbow, ulnaWrist).multiplyScalar(0.5);
     const ulnaDirection = new THREE.Vector3().subVectors(ulnaWrist, ulnaElbow).normalize();
+    console.log('Ulna 3D position:', ulnaMid);
 
     ulnaShaftRef.current.position.copy(ulnaMid);
     ulnaShaftRef.current.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), ulnaDirection);
@@ -1095,18 +1269,43 @@ function ForearmBones({ landmarks, isLeft = false }: { landmarks: any; isLeft?: 
     ulnaShaftRef.current.visible = true;
 
     // Update screen position if one of these bones is selected (clicked)
+    console.log('ForearmBones useFrame - selectedBone:', selectedBone);
     if (selectedBone === "Radius (Forearm - Thumb Side)") {
+      // Final check: if bone is not visible, clear selection
+      if (!radiusShaftRef.current.visible) {
+        removeVisibleBone("Radius (Forearm - Thumb Side)");
+        setBonePosition(null);
+        setSelectedBone(null);
+        return;
+      }
+
       const screenPos = radiusMid.clone().project(camera);
       const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
       const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+      console.log('Radius position update:', x, y);
       setBonePosition({ x, y });
-      console.log('ForearmBones useFrame: Setting position for Radius', { x, y });
     } else if (selectedBone === "Ulna (Forearm - Pinky Side)") {
+      // Final check: if bone is not visible, clear selection
+      if (!ulnaShaftRef.current.visible) {
+        removeVisibleBone("Ulna (Forearm - Pinky Side)");
+        setBonePosition(null);
+        setSelectedBone(null);
+        return;
+      }
+
       const screenPos = ulnaMid.clone().project(camera);
       const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
       const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+      console.log('Ulna position update:', x, y);
       setBonePosition({ x, y });
-      console.log('ForearmBones useFrame: Setting position for Ulna', { x, y });
+    }
+
+    // Final visibility check - ensure we remove from list if not visible
+    if (!radiusShaftRef.current.visible) {
+      removeVisibleBone("Radius (Forearm - Thumb Side)");
+    }
+    if (!ulnaShaftRef.current.visible) {
+      removeVisibleBone("Ulna (Forearm - Pinky Side)");
     }
   });
 
@@ -1631,29 +1830,86 @@ function HandSkeleton({ landmarks }: { landmarks: any }) {
   );
 }
 
+// Debug component to show visible bones
+function DebugVisibleBones() {
+  const { visibleBones } = useContext(BoneContext);
+
+  return (
+    <div className="fixed bottom-20 right-4 bg-black/80 text-white p-4 rounded-lg max-w-sm pointer-events-auto z-[10000]">
+      <h3 className="font-bold mb-2 text-sm">Debug: Visible Bones ({visibleBones.size})</h3>
+      <div className="flex flex-wrap gap-1 max-h-40 overflow-y-auto">
+        {Array.from(visibleBones).map((bone) => (
+          <span
+            key={bone}
+            className="bg-green-600 text-white px-2 py-0.5 rounded text-xs"
+          >
+            {bone}
+          </span>
+        ))}
+        {visibleBones.size === 0 && (
+          <span className="text-gray-400 text-xs italic">No bones visible</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Main canvas wrapper component
 export default function AvatarRig({ landmarks }: AvatarRigProps) {
   const [hoveredBone, setHoveredBone] = useState<string | null>(null);
   const [selectedBone, setSelectedBone] = useState<string | null>(null);
   const [bonePosition, setBonePosition] = useState<{ x: number; y: number } | null>(null);
+  const [visibleBones, setVisibleBones] = useState<Set<string>>(new Set());
+  const visibleBonesRef = useRef<Set<string>>(new Set());
+  const invisibleTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Debug: Log when hoveredBone changes
-  useEffect(() => {
-    console.log('AvatarRig: hoveredBone state changed to', hoveredBone);
-  }, [hoveredBone]);
+  const addVisibleBone = (name: string) => {
+    if (!visibleBonesRef.current.has(name)) {
+      visibleBonesRef.current.add(name);
+      setVisibleBones(new Set(visibleBonesRef.current));
 
-  // Debug: Log when selectedBone changes
-  useEffect(() => {
-    console.log('AvatarRig: selectedBone state changed to', selectedBone);
-  }, [selectedBone]);
+      // If this bone was selected and is becoming visible again, clear the timer
+      if (selectedBone === name && invisibleTimerRef.current) {
+        clearTimeout(invisibleTimerRef.current);
+        invisibleTimerRef.current = null;
+      }
+    }
+  };
 
-  // Debug: Log when bonePosition changes
-  useEffect(() => {
-    console.log('AvatarRig: bonePosition state changed to', bonePosition);
-  }, [bonePosition]);
+  const removeVisibleBone = (name: string) => {
+    if (visibleBonesRef.current.has(name)) {
+      visibleBonesRef.current.delete(name);
+      setVisibleBones(new Set(visibleBonesRef.current));
+
+      // If the removed bone was selected, wait 1 second before clearing
+      if (selectedBone === name) {
+        // Clear any existing timer
+        if (invisibleTimerRef.current) {
+          clearTimeout(invisibleTimerRef.current);
+        }
+
+        // Start new timer
+        invisibleTimerRef.current = setTimeout(() => {
+          setSelectedBone(null);
+          setBonePosition(null);
+          invisibleTimerRef.current = null;
+        }, 1000);
+      }
+    }
+  };
 
   return (
-    <BoneContext.Provider value={{ hoveredBone, setHoveredBone, selectedBone, setSelectedBone, bonePosition, setBonePosition }}>
+    <BoneContext.Provider value={{
+      hoveredBone,
+      setHoveredBone,
+      selectedBone,
+      setSelectedBone,
+      bonePosition,
+      setBonePosition,
+      visibleBones,
+      addVisibleBone,
+      removeVisibleBone
+    }}>
       <div className="absolute inset-0 pointer-events-none">
         <Canvas
           camera={{
