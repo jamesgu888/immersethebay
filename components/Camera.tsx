@@ -53,7 +53,7 @@ export default function Camera() {
   const cameraRef = useRef<any>(null);
   const [mediapipeLoaded, setMediapipeLoaded] = useState(false);
   const [currentLandmarks, setCurrentLandmarks] = useState<any>(null);
-  const [showMediaPipe, setShowMediaPipe] = useState(true);
+  const [showMediaPipe, setShowMediaPipe] = useState(false);
   const lastDetectedPartRef = useRef<string | null>(null);
 
   const onResults = (results: any) => {
