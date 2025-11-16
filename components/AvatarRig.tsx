@@ -1054,11 +1054,6 @@ function CarpalConnection({
 
     if (!wrist || !middleMCP || !indexMCP || !pinkyMCP) {
       meshRef.current.visible = false;
-      // If this bone is selected and disappears, clear the position and selection
-      if (name && selectedBone === name) {
-        setBonePosition(null);
-        setSelectedBone(null);
-      }
       return;
     }
 
