@@ -9,19 +9,19 @@ export default function SkullRig({ faceLandmarks }: { faceLandmarks: any }) {
   const skullRef = useRef<THREE.Group>(null);
 
   // Load skull model
-  const gltf = useGLTF("/models/skull.glb");
+  const gltf = useGLTF("/skull.glb");
     const scene = gltf.scene || gltf.scenes?.[0];
 
     console.log("Loaded GLTF:", gltf, "Scene:", scene);
 
 
-  // Single transparent material for entire skull
+  // Single material for entire skull
   const skullMaterial = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
         color: "white",
-        transparent: true,
-        opacity: 0.35,         // ← adjust transparency here
+        transparent: false,
+        opacity: 1.0,         // Fully opaque
         roughness: 0.9,
         metalness: 0.0,
       }),
@@ -59,52 +59,52 @@ export default function SkullRig({ faceLandmarks }: { faceLandmarks: any }) {
 
     // -------------------------------
     // 2. Find anchor point for the whole skull
-    // Use midpoint between ears → actual head center
+    // Use midpoint between nose and jaw → actual head center
     // -------------------------------
-    const leftEar = map2D(lm[7].x, lm[7].y);
-    const rightEar = map2D(lm[8].x, lm[8].y);
+    const noseTip = map2D(lm[1].x, lm[1].y);        // Nose tip
+    const chinBottom = map2D(lm[152].x, lm[152].y); // Bottom of chin/jaw
+    const leftJaw = map2D(lm[234].x, lm[234].y);    // Left jaw point
+    const rightJaw = map2D(lm[454].x, lm[454].y);   // Right jaw point
 
-    const headCenter = new THREE.Vector3().addVectors(leftEar, rightEar).multiplyScalar(0.5);
+    // Head center is midpoint between nose and chin
+    const headCenter = new THREE.Vector3().addVectors(noseTip, chinBottom).multiplyScalar(0.5);
 
     // -------------------------------
     // 3. Compute head rotation from MediaPipe
     // -------------------------------
-    const leftEye = map2D(lm[2].x, lm[2].y);
-    const rightEye = map2D(lm[5].x, lm[5].y);
+    // Calculate face orientation vectors using jaw points
+    const jawDir = new THREE.Vector3().subVectors(rightJaw, leftJaw).normalize(); // X-axis (left-right)
+    const up = new THREE.Vector3().subVectors(noseTip, chinBottom).normalize(); // Y-axis (up - from jaw to nose)
+    const forward = new THREE.Vector3().crossVectors(jawDir, up).normalize(); // Z-axis (forward toward camera)
 
-    const eyeDir = new THREE.Vector3().subVectors(rightEye, leftEye).normalize(); // yaw
-    const noseTip = map2D(lm[0].x, lm[0].y);
-
-    const forward = new THREE.Vector3().subVectors(headCenter, noseTip).normalize(); // pitch
-
-    const up = new THREE.Vector3().crossVectors(eyeDir, forward).normalize();
-
+    // Create rotation matrix with proper basis
     const skullRotation = new THREE.Matrix4();
-    skullRotation.makeBasis(eyeDir, up, forward);
+    skullRotation.makeBasis(jawDir, up, forward);
 
     // -------------------------------
     // 4. Apply transform to skull
     // -------------------------------
     skullRef.current.position.copy(headCenter);
 
-    // Rotate skull correctly
+    // Apply rotation
     skullRef.current.setRotationFromMatrix(skullRotation);
+    skullRef.current.rotateY(Math.PI);  // Flip 180 degrees to face camera
 
     // -------------------------------
-    // 5. Scale skull based on face width
+    // 5. Scale skull based on jaw width
     // -------------------------------
-    const faceWidth = leftEar.distanceTo(rightEar);
+    const jawWidth = leftJaw.distanceTo(rightJaw);
 
-    const scale = faceWidth * 1.6;  // ← adjust multiplier here if still too big/small
+    const scale = jawWidth * 0.09 ;  // Much smaller scale (5% of previous)
     skullRef.current.scale.setScalar(scale);
 
     // -------------------------------
-    // 6. Vertical offset so skull sits ABOVE eyes
+    // 6. Vertical offset for proper positioning
     // -------------------------------
-    skullRef.current.position.y += scale * 0.55;
+    skullRef.current.position.y += scale * 1.5;  // Increased vertical offset to position skull higher
   });
 
   return <primitive ref={skullRef} object={scene} />;
 }
 
-useGLTF.preload("/models/skull.glb");
+useGLTF.preload("/skull.glb");
