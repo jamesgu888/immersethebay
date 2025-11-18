@@ -4,6 +4,8 @@
 
 **Anatomist** is an interactive web application that uses your webcam to detect your body in real-time and overlay detailed 3D anatomical models. See your muscles, bones, and body structure come to life as you move.
 
+Devpost: [Immerse The Bay Hackathon Submission](https://devpost.com/software/anatomist?ref_content=user-portfolio&ref_feature=in_progress)
+
 ## What It Does
 
 Anatomist tracks your body through your webcam and displays interactive 3D anatomical models that move with you in real-time. The application can detect your entire body, including your pose, hands, and face, then overlays detailed anatomical models like muscle structures directly onto your body.
